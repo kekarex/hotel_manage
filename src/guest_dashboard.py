@@ -1,4 +1,5 @@
 import sqlite3
+import logging
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QComboBox, QDateEdit,
                              QCheckBox, QTextEdit, QPushButton, QVBoxLayout,
                              QHBoxLayout, QGroupBox, QFormLayout, QTableWidget,
@@ -15,6 +16,7 @@ class GuestDashboard(QMainWindow):
         super().__init__()
         self.user = user  # Сохранение данных пользователя
         self.db = db  # Сохранение объекта базы данных
+        logging.info(f"GuestDashboard получил экземпляр Database: {id(self.db)}")
         self.setWindowTitle(f'Личный кабинет гостя ({user[4]})')  # Установка заголовка
         self.setFixedSize(1000, 800)  # Установка фиксированного размера окна
 
@@ -158,10 +160,15 @@ class GuestDashboard(QMainWindow):
         check_out = self.check_out.date().toString('yyyy-MM-dd')
 
         try:
+            self.db.ensure_connection()  # Проверка соединения
             self.db.cursor.execute(
-                "SELECT price_per_night FROM rooms WHERE type=? LIMIT 1", (room_type,)
+                "SELECT id, price_per_night FROM rooms WHERE type=? AND status='available' LIMIT 1", (room_type,)
             )
-            price_per_night = self.db.cursor.fetchone()[0]
+            result = self.db.cursor.fetchone()
+            if not result:
+                QMessageBox.warning(self, 'Ошибка', f'Нет доступных номеров категории {room_type}')
+                return
+            room_id, price_per_night = result
 
             nights = self.check_in.date().daysTo(self.check_out.date())
             if nights <= 0:
@@ -209,6 +216,7 @@ class GuestDashboard(QMainWindow):
 
             total_cost = base_cost + services_cost + meals_cost
 
+            self.db.ensure_connection()
             self.db.cursor.execute(
                 "SELECT discount FROM clients WHERE email=?", (self.user[5],)
             )
@@ -230,13 +238,89 @@ class GuestDashboard(QMainWindow):
             self.cost_group.setVisible(True)
             self.btn_book.setEnabled(True)
 
+            # Сохраняем данные для confirm_booking
+            self.booking_data = {
+                'room_id': room_id,
+                'check_in': check_in,
+                'check_out': check_out,
+                'total_price': total_cost,
+                'services': [
+                    ('Трансфер', 1500) if self.transfer.isChecked() else None,
+                    ('Спа-процедуры', 3000) if self.spa.isChecked() else None,
+                    ('Экскурсии', 2000) if self.excursions.isChecked() else None,
+                    ('Доп. кровать', 1000 * nights) if self.extra_bed.isChecked() else None,
+                    ('Спортзал', 500 * nights) if self.gym.isChecked() else None,
+                    ('Прокат инвентаря', 800 * nights) if self.equipment.isChecked() else None,
+                    (meals_type, meals_cost) if meals_cost > 0 else None
+                ]
+            }
+            logging.info(f"Рассчитана стоимость: {total_cost:.2f} руб. для {room_type}")
+
         except sqlite3.Error as e:
+            logging.error(f"Ошибка расчета стоимости: {e}")
             QMessageBox.warning(self, 'Ошибка', f'Не удалось рассчитать стоимость: {str(e)}')
 
     def confirm_booking(self):
-        """Подтверждение бронирования (заглушка)."""
-        QMessageBox.information(self, 'Успех', 'Бронирование успешно создано!')
-        self.load_my_bookings()
+        """Подтверждение и сохранение бронирования."""
+        if not hasattr(self, 'booking_data'):
+            QMessageBox.warning(self, 'Ошибка', 'Сначала рассчитайте стоимость')
+            return
+
+        guest_name = self.user[4]  # ФИО из user
+        guest_email = self.user[5]  # Email из user
+        guest_phone = self.user[6] if self.user[6] else ''  # Телефон из user
+        room_id = self.booking_data['room_id']
+        check_in = self.booking_data['check_in']
+        check_out = self.booking_data['check_out']
+        total_price = self.booking_data['total_price']
+        status = 'reserved'
+        created_by = self.user[0]  # ID пользователя
+        adults = 1  # Временное значение по умолчанию
+        children = 0  # Временное значение по умолчанию
+
+        logging.debug(f"Сохранение бронирования: room_id={room_id}, guest_name={guest_name}, "
+                      f"guest_email={guest_email}, total_price={total_price}, adults={adults}, "
+                      f"children={children}, created_by={created_by}")
+
+        try:
+            self.db.ensure_connection()
+            self.db.cursor.execute(
+                """
+                INSERT INTO bookings (room_id, guest_name, guest_phone, guest_email,
+                                     check_in_date, check_out_date, adults, children,
+                                     status, total_price, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (room_id, guest_name, guest_phone, guest_email, check_in, check_out,
+                 adults, children, status, total_price, created_by)
+            )
+            booking_id = self.db.cursor.lastrowid
+            self.db.conn.commit()
+
+            # Сохранение услуг
+            for service in self.booking_data['services']:
+                if service:
+                    name, cost = service
+                    self.db.cursor.execute(
+                        "SELECT id FROM services WHERE name=?", (name,)
+                    )
+                    service_id = self.db.cursor.fetchone()
+                    if service_id:
+                        self.db.cursor.execute(
+                            "INSERT INTO booking_services (booking_id, service_id) VALUES (?, ?)",
+                            (booking_id, service_id[0])
+                        )
+            self.db.conn.commit()
+
+            logging.info(f"Бронирование создано: ID={booking_id}, guest_email={guest_email}")
+            QMessageBox.information(self, 'Успех', 'Бронирование успешно создано!')
+            self.cost_group.setVisible(False)
+            self.btn_book.setEnabled(False)
+            self.load_my_bookings()
+
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка сохранения бронирования: {e}")
+            QMessageBox.warning(self, 'Ошибка', f'Не удалось создать бронирование: {str(e)}')
 
     def init_my_bookings_tab(self):
         """Инициализация вкладки моих бронирований."""
@@ -263,6 +347,7 @@ class GuestDashboard(QMainWindow):
     def load_my_bookings(self):
         """Загрузка бронирований пользователя."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT b.id, 
                        b.check_in_date || ' - ' || b.check_out_date as dates,
@@ -275,9 +360,9 @@ class GuestDashboard(QMainWindow):
                        b.status
                 FROM bookings b
                 JOIN rooms r ON b.room_id = r.id
-                WHERE b.guest_email = ?
+                WHERE b.guest_email = ? AND b.created_by = ?
                 ORDER BY b.check_in_date DESC
-            """, (self.user[5],))
+            """, (self.user[5], self.user[0]))
             bookings = self.db.cursor.fetchall()
 
             self.my_bookings_table.setRowCount(len(bookings))
@@ -293,7 +378,9 @@ class GuestDashboard(QMainWindow):
                             item.setBackground(QColor(200, 255, 200))
 
                     self.my_bookings_table.setItem(row, col, item)
+            logging.info(f"Загружено {len(bookings)} бронирований для guest_email={self.user[5]}")
         except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки бронирований: {e}")
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить бронирования: {str(e)}')
 
     def cancel_my_booking(self):
@@ -318,13 +405,16 @@ class GuestDashboard(QMainWindow):
 
         if reply == QMessageBox.Yes:
             try:
+                self.db.ensure_connection()
                 self.db.cursor.execute(
                     "UPDATE bookings SET status='cancelled' WHERE id=?", (booking_id,)
                 )
                 self.db.conn.commit()
+                logging.info(f"Бронирование ID={booking_id} отменено")
                 self.load_my_bookings()
                 QMessageBox.information(self, 'Успех', 'Бронирование успешно отменено')
             except sqlite3.Error as e:
+                logging.error(f"Ошибка отмены бронирования: {e}")
                 QMessageBox.warning(self, 'Ошибка', f'Не удалось отменить бронирование: {str(e)}')
 
     def init_review_tab(self):
@@ -362,6 +452,7 @@ class GuestDashboard(QMainWindow):
     def load_review_bookings(self):
         """Загрузка бронирований, доступных для отзыва."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT b.id, r.type || ' (' || b.check_in_date || ' - ' || b.check_out_date || ')'
                 FROM bookings b
@@ -375,7 +466,9 @@ class GuestDashboard(QMainWindow):
             self.review_booking.clear()
             for booking in bookings:
                 self.review_booking.addItem(booking[1], booking[0])
+            logging.info(f"Загружено {len(bookings)} бронирований для отзывов")
         except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки бронирований для отзывов: {e}")
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить бронирования: {str(e)}')
 
     def submit_review(self):
@@ -389,15 +482,18 @@ class GuestDashboard(QMainWindow):
         comment = self.review_text.toPlainText()
 
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute(
                 "INSERT INTO reviews (booking_id, rating, comment) VALUES (?, ?, ?)",
                 (booking_id, rating, comment if comment else None)
             )
             self.db.conn.commit()
+            logging.info(f"Отзыв добавлен для booking_id={booking_id}")
             QMessageBox.information(self, 'Успех', 'Спасибо за ваш отзыв!')
             self.review_text.clear()
             self.load_review_bookings()
         except sqlite3.Error as e:
+            logging.error(f"Ошибка отправки отзыва: {e}")
             QMessageBox.warning(self, 'Ошибка', f'Не удалось отправить отзыв: {str(e)}')
 
     def init_offers_tab(self):
@@ -416,6 +512,7 @@ class GuestDashboard(QMainWindow):
     def load_offers(self):
         """Загрузка персональных предложений для пользователя."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute(
                 "SELECT discount FROM clients WHERE email=?", (self.user[5],)
             )
@@ -439,16 +536,23 @@ class GuestDashboard(QMainWindow):
                 offers_text += "- Бесплатные экскурсии при бронировании от 7 ночей\n"
 
             self.offers_text.setPlainText(offers_text)
+            logging.info(f"Загружены персональные предложения для guest_email={self.user[5]}")
         except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки предложений: {e}")
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить предложения: {str(e)}')
 
     def load_data(self):
         """Загрузка всех данных для панели."""
-        self.load_my_bookings()
-        self.load_review_bookings()
-        self.load_offers()
+        try:
+            self.load_my_bookings()
+            self.load_review_bookings()
+            self.load_offers()
+            logging.info(f"Все данные загружены для GuestDashboard (user: {self.user[4]})")
+        except Exception as e:
+            logging.error(f"Ошибка загрузки данных: {e}")
+            QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить данные: {str(e)}')
 
     def closeEvent(self, event):
         """Обработка закрытия окна."""
-        self.db.close()  # Закрытие соединения с базой данных
+        logging.info("Закрытие GuestDashboard")
         event.accept()
