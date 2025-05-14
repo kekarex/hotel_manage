@@ -5,18 +5,19 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QLineEdit, QPushButto
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 import sqlite3
-from database import Database
-from admin_dashboard import AdminDashboard
-from guest_dashboard import GuestDashboard
+from src.database import Database
+from src.admin_dashboard import AdminDashboard
+from src.guest_dashboard import GuestDashboard
 
 
 class AuthWindow(QMainWindow):
     """Окно авторизации с выбором роли и функционалом входа/регистрации."""
 
-    def __init__(self):
+    def __init__(self, db):
         """Инициализация окна авторизации."""
         super().__init__()
-        self.db = Database()  # Инициализация базы данных
+        self.db = db  # Использование переданного экземпляра Database
+        logging.info(f"AuthWindow получил экземпляр Database: {id(self.db)}")
         self.setWindowTitle('Система управления отелем')  # Установка заголовка окна
         self.setFixedSize(1000, 800)  # Установка фиксированного размера окна
 
@@ -239,22 +240,26 @@ class AuthWindow(QMainWindow):
             return
 
         try:
+            self.db.ensure_connection()  # Проверка соединения
             user = self.db.get_user(username, password)
             if not user:
+                logging.warning(f"Неуспешная авторизация администратора: {username}")
                 QMessageBox.warning(self, 'Ошибка', 'Неверные учетные данные')
                 return
 
             if user[3].lower() != 'admin':
+                logging.warning(f"Недостаточно прав для {username}")
                 QMessageBox.warning(self, 'Ошибка',
                                     'Недостаточно прав для входа как администратор')
                 return
 
+            logging.info(f"Успешная авторизация администратора: {username}")
             self.clear_fields()
             self.open_admin_dashboard(user)
 
         except Exception as e:
-            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
             logging.error(f"Ошибка входа администратора: {e}")
+            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
 
     def guest_login(self):
         """Обработка входа гостя."""
@@ -262,10 +267,12 @@ class AuthWindow(QMainWindow):
         password = self.guest_password.text().strip()
 
         if not username or not password:
+            logging.warning("Пустой логин или пароль для гостя")
             QMessageBox.warning(self, 'Ошибка', 'Введите логин и пароль')
             return
 
         try:
+            self.db.ensure_connection()  # Проверка соединения
             self.db.cursor.execute(
                 """
                 SELECT * FROM users WHERE username=? AND password=? AND role='guest'
@@ -275,18 +282,20 @@ class AuthWindow(QMainWindow):
             user = self.db.cursor.fetchone()
 
             if not user:
+                logging.warning(f"Неуспешная авторизация гостя: {username}")
                 QMessageBox.warning(
                     self, 'Ошибка',
                     'Неверные учетные данные или недостаточно прав для входа как гость'
                 )
                 return
 
+            logging.info(f"Успешная авторизация гостя: {username}")
             self.clear_fields()
             self.open_guest_dashboard(user)
 
         except Exception as e:
-            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
             logging.error(f"Ошибка входа гостя: {e}")
+            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
 
     def register_guest(self):
         """Обработка регистрации гостя."""
@@ -297,14 +306,17 @@ class AuthWindow(QMainWindow):
         password = self.guest_register_password.text().strip()
 
         if not all([fullname, email, username, password]):
+            logging.warning("Не заполнены обязательные поля при регистрации")
             QMessageBox.warning(self, 'Ошибка', 'Заполните все обязательные поля')
             return
 
         if '@' not in email or '.' not in email.split('@')[-1]:
+            logging.warning(f"Некорректный email при регистрации: {email}")
             QMessageBox.warning(self, 'Ошибка', 'Введите корректный email')
             return
 
         try:
+            self.db.ensure_connection()  # Проверка соединения
             success = self.db.add_user(username, password, 'guest', fullname, email, phone)
             if success:
                 self.db.cursor.execute(
@@ -312,6 +324,7 @@ class AuthWindow(QMainWindow):
                     (fullname, email, phone)
                 )
                 self.db.conn.commit()
+                logging.info(f"Успешная регистрация гостя: {username}")
                 QMessageBox.information(
                     self, 'Успех',
                     'Регистрация прошла успешно. Теперь вы можете войти.'
@@ -319,32 +332,36 @@ class AuthWindow(QMainWindow):
                 self.clear_fields()
                 self.stacked_widget.setCurrentIndex(2)
             else:
+                logging.warning(f"Пользователь существует: {username} или {email}")
                 QMessageBox.warning(
                     self, 'Ошибка',
                     'Пользователь с таким логином или email уже существует'
                 )
         except sqlite3.Error as e:
-            QMessageBox.warning(self, 'Ошибка', f'Ошибка при регистрации: {str(e)}')
             logging.error(f"Ошибка регистрации гостя: {e}")
+            QMessageBox.warning(self, 'Ошибка', f'Ошибка при регистрации: {str(e)}')
 
     def logout(self):
         """Выход из системы и очистка полей."""
+        logging.info("Выход из системы")
         self.clear_fields()
         self.stacked_widget.setCurrentIndex(0)
 
     def open_admin_dashboard(self, user):
         """Открытие панели администратора."""
+        logging.info(f"Открытие AdminDashboard для пользователя: {user[1]}")
         self.admin_dashboard = AdminDashboard(user, self.db)
         self.admin_dashboard.show()
         self.close()
 
     def open_guest_dashboard(self, user):
         """Открытие панели гостя."""
+        logging.info(f"Открытие GuestDashboard для пользователя: {user[1]}")
         self.guest_dashboard = GuestDashboard(user, self.db)
         self.guest_dashboard.show()
         self.close()
 
     def closeEvent(self, event):
         """Обработка закрытия окна."""
-        self.db.close()  # Закрытие соединения с базой данных
+        logging.info("Закрытие AuthWindow")
         event.accept()

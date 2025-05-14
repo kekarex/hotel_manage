@@ -9,11 +9,11 @@ class Database:
     def __init__(self, db_path='hotel.db'):
         """Инициализация соединения с базой данных и создание таблиц."""
         self.db_path = db_path
-        self.conn = sqlite3.connect(self.db_path)  # Подключение к базе данных
-        self.cursor = self.conn.cursor()  # Создание курсора
-        self.create_tables()  # Создание таблиц
+        self.conn = None
+        self.cursor = None
+        self.ensure_connection()
+        self.create_tables()
         try:
-            # Проверка наличия столбца is_active в таблице users
             self.cursor.execute("PRAGMA table_info(users)")
             columns = [column[1] for column in self.cursor.fetchall()]
             if 'is_active' not in columns:
@@ -22,26 +22,35 @@ class Database:
         except sqlite3.Error as e:
             logging.error(f"Ошибка проверки/добавления столбца is_active: {e}")
             raise
-        self.check_data_integrity()  # Проверка целостности данных
-        self.create_default_admin()  # Создание администраторов по умолчанию
+        self.check_data_integrity()
+        self.create_default_admin()
 
     def ensure_connection(self):
-        """Проверка и переоткрытие соединения, если оно закрыто."""
+        """Проверка и переоткрытие соединения, если оно закрыто или отсутствует."""
         try:
-            # Попытка выполнить тестовый запрос для проверки соединения
+            if self.conn is None or self.cursor is None:
+                raise AttributeError("Соединение или курсор не инициализированы")
+            # Проверка активности соединения
             self.cursor.execute("SELECT 1")
             self.cursor.fetchone()
-        except (sqlite3.Error, AttributeError):
-            # Если соединение закрыто или отсутствует, переоткрываем его
+            logging.debug("Соединение с базой данных активно")
+        except (sqlite3.Error, AttributeError) as e:
+            logging.warning(f"Переоткрытие соединения: {e}")
+            if self.conn:
+                try:
+                    self.conn.close()
+                except sqlite3.Error:
+                    pass
             self.conn = sqlite3.connect(self.db_path)
             self.cursor = self.conn.cursor()
             self.cursor.execute("PRAGMA foreign_keys = ON")
+            logging.info("Новое соединение с базой данных установлено")
 
     def create_tables(self):
         """Создание всех необходимых таблиц в базе данных."""
-        self.cursor.execute("PRAGMA foreign_keys = ON")  # Включение поддержки внешних ключей
+        self.ensure_connection()
+        self.cursor.execute("PRAGMA foreign_keys = ON")
 
-        # Создание таблицы пользователей
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +65,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы номеров
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS rooms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +80,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы бронирований
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS bookings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +102,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы услуг
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +112,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы связи бронирований и услуг
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS booking_services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +123,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы клиентов
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS clients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,7 +134,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы отзывов
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,7 +145,6 @@ class Database:
             )
         """)
 
-        # Создание таблицы прогнозов
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS forecasts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,10 +156,11 @@ class Database:
             )
         """)
 
-        self.conn.commit()  # Сохранение изменений
+        self.conn.commit()
 
     def check_data_integrity(self):
         """Проверка целостности базы данных."""
+        self.ensure_connection()
         try:
             self.cursor.execute("PRAGMA integrity_check")
             result = self.cursor.fetchone()
@@ -170,6 +173,7 @@ class Database:
 
     def create_default_admin(self):
         """Создание администраторов по умолчанию, если они отсутствуют."""
+        self.ensure_connection()
         admins = [
             ('admin', 'admin123', 'Главный администратор', 'admin@hotel.com'),
             ('manager1', 'mgrpass1', 'Менеджер Иванов', 'manager1@hotel.com'),
@@ -191,10 +195,11 @@ class Database:
             except sqlite3.Error as e:
                 logging.error(f"Ошибка создания администратора {username}: {e}")
 
-        self.conn.commit()  # Сохранение изменений
+        self.conn.commit()
 
     def add_user(self, username, password, role, full_name, email, phone=None):
         """Добавление нового пользователя в базу данных."""
+        self.ensure_connection()
         try:
             self.cursor.execute(
                 """
@@ -210,13 +215,14 @@ class Database:
 
     def get_user(self, username, password):
         """Получение данных пользователя из базы данных."""
+        self.ensure_connection()
         try:
             self.cursor.execute(
                 "SELECT * FROM users WHERE username=? AND password=?", (username, password)
             )
             user = self.cursor.fetchone()
             if user:
-                logging.info(f"Найден пользователь: {user}")
+                logging.info(f"Найден пользователь: {username}")
             else:
                 logging.warning(f"Пользователь не найден: {username}")
             return user
@@ -226,6 +232,7 @@ class Database:
 
     def get_available_rooms(self, check_in, check_out, room_type=None, capacity=None):
         """Получение списка доступных номеров на указанные даты."""
+        self.ensure_connection()
         try:
             query = """
                 SELECT * FROM rooms 
@@ -257,6 +264,7 @@ class Database:
 
     def get_time_series(self, data_type: str, start_date: str, end_date: str) -> list[tuple[str, float]]:
         """Извлекает временной ряд для бронирований или дохода."""
+        self.ensure_connection()
         try:
             if data_type == "bookings":
                 query = """
@@ -284,6 +292,7 @@ class Database:
 
     def save_forecast(self, forecast_date: str, data_type: str, actual_value: float, forecast_value: float, error: float):
         """Сохраняет результат прогноза."""
+        self.ensure_connection()
         try:
             self.cursor.execute(
                 """
@@ -298,5 +307,11 @@ class Database:
 
     def close(self):
         """Закрытие соединения с базой данных."""
+        logging.info("Закрытие соединения с базой данных")
         if self.conn:
-            self.conn.close()
+            try:
+                self.conn.close()
+                self.conn = None
+                self.cursor = None
+            except sqlite3.Error as e:
+                logging.error(f"Ошибка при закрытии соединения: {e}")

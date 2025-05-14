@@ -1,18 +1,27 @@
 import sys
+import logging
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
-
-from auth_window import AuthWindow
+from src.database import Database
+from src.auth_window import AuthWindow
 
 
 def main():
     """Инициализация и запуск приложения управления отелем."""
+    # Настройка логирования
+    logging.basicConfig(
+        filename='hotel_app.log',
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logging.info("Запуск приложения")
+
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('assets/hotel_icon.png'))  # Установка иконки приложения
     app.setStyle('Fusion')  # Установка стиля интерфейса
 
     # Применение пользовательских стилей для единообразного UI
-    app.setStyleSheet("""
+    app.setStyleSheet(""" 
         QMainWindow {
             background-color: #f5f5f5;
         }
@@ -83,9 +92,15 @@ def main():
         }
     """)
 
-    auth_window = AuthWindow()  # Создание окна авторизации
+    db = Database()  # Создание экземпляра Database
+    logging.info(f"Создан экземпляр Database: {id(db)}")
+
+    auth_window = AuthWindow(db)  # Передача db в AuthWindow
     auth_window.show()  # Отображение окна
-    sys.exit(app.exec_())  # Запуск главного цикла приложения
+    exit_code = app.exec_()  # Запуск главного цикла приложения
+    db.close()  # Закрытие соединения
+    logging.info("Приложение завершено")
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':
