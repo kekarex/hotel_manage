@@ -1,7 +1,7 @@
 import logging
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout,
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QComboBox,
-                             QDateEdit, QTextEdit, QMessageBox, QStackedWidget)
+                             QDateEdit, QTextEdit, QMessageBox, QStackedWidget, QGroupBox)
 from PyQt5.QtCore import Qt, QDate, QTimer
 from PyQt5.QtGui import QFont, QColor
 import sqlite3
@@ -10,6 +10,10 @@ from dialogs.room_dialog import RoomDialog
 from dialogs.room_status_dialog import RoomStatusDialog
 from dialogs.client_dialog import ClientDialog
 from dialogs.discount_dialog import DiscountDialog
+from forecast import Forecast
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from datetime import datetime
 
 
 class AdminDashboard(QMainWindow):
@@ -45,6 +49,7 @@ class AdminDashboard(QMainWindow):
         central_widget.setLayout(main_layout)
 
         # Создание боковой панели
+
         sidebar = QWidget()
         sidebar.setFixedWidth(200)
         sidebar_layout = QVBoxLayout()
@@ -147,6 +152,7 @@ class AdminDashboard(QMainWindow):
     def load_bookings_data(self):
         """Загрузка данных бронирований в таблицу."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT b.id, 
                        b.check_in_date || ' - ' || b.check_out_date as dates,
@@ -183,7 +189,7 @@ class AdminDashboard(QMainWindow):
 
     def create_booking(self):
         """Создание нового бронирования."""
-        dialog = BookingDialog(self.db)
+        dialog = BookingDialog(self.db, user_id=self.user[0])
         if dialog.exec_() == dialog.Accepted:
             self.load_bookings_data()
 
@@ -197,6 +203,7 @@ class AdminDashboard(QMainWindow):
         booking_id = self.bookings_table.item(selected_row, 0).text()
 
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT b.*, r.type as room_type
                 FROM bookings b
@@ -205,7 +212,7 @@ class AdminDashboard(QMainWindow):
             """, (booking_id,))
             booking = self.db.cursor.fetchone()
 
-            dialog = BookingDialog(self.db, booking)
+            dialog = BookingDialog(self.db, booking, user_id=self.user[0])
             if dialog.exec_() == dialog.Accepted:
                 self.load_bookings_data()
         except sqlite3.Error as e:
@@ -233,6 +240,7 @@ class AdminDashboard(QMainWindow):
 
         if reply == QMessageBox.Yes:
             try:
+                self.db.ensure_connection()
                 self.db.cursor.execute(
                     "UPDATE bookings SET status='cancelled' WHERE id=?", (booking_id,)
                 )
@@ -289,6 +297,7 @@ class AdminDashboard(QMainWindow):
     def load_rooms_data(self):
         """Загрузка данных номеров в таблицу."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT r.id, r.number, r.type, r.status, 
                        CASE WHEN b.guest_name IS NOT NULL THEN b.guest_name ELSE '' END as guest,
@@ -340,6 +349,7 @@ class AdminDashboard(QMainWindow):
         if dialog.exec_() == dialog.Accepted:
             new_status = dialog.get_selected_status()
             try:
+                self.db.ensure_connection()
                 self.db.cursor.execute(
                     "UPDATE rooms SET status=? WHERE id=?", (new_status, room_id)
                 )
@@ -389,6 +399,7 @@ class AdminDashboard(QMainWindow):
     def load_clients_data(self):
         """Загрузка данных клиентов в таблицу."""
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute("""
                 SELECT c.id, c.full_name, c.email, c.phone, c.discount,
                        (SELECT COUNT(*) FROM bookings WHERE guest_email = c.email) as bookings_count
@@ -431,6 +442,7 @@ class AdminDashboard(QMainWindow):
         if dialog.exec_() == dialog.Accepted:
             new_discount = dialog.get_discount()
             try:
+                self.db.ensure_connection()
                 self.db.cursor.execute(
                     "UPDATE clients SET discount=? WHERE id=?", (new_discount, client_id)
                 )
@@ -502,6 +514,7 @@ class AdminDashboard(QMainWindow):
         end_date = self.end_date.date().toString('yyyy-MM-dd')
 
         try:
+            self.db.ensure_connection()
             report_text = f"Отчет: {report_type}\nПериод: {start_date} - {end_date}\n\n"
 
             if report_type == 'Доходы':
@@ -582,83 +595,136 @@ class AdminDashboard(QMainWindow):
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
-        analysis_params = QHBoxLayout()
+        # Группа для параметров прогноза
+        forecast_group = QGroupBox("Прогноз бронирований и доходов")
+        forecast_layout = QVBoxLayout()
 
-        # Выбор типа анализа
+        # Параметры прогноза
+        params_layout = QHBoxLayout()
         self.analysis_type = QComboBox()
-        self.analysis_type.addItems(['Занятость номеров', 'Прогноз доходов', 'Тренды спроса'])
-        analysis_params.addWidget(QLabel('Тип анализа:'))
-        analysis_params.addWidget(self.analysis_type)
+        self.analysis_type.addItems(['Бронирования', 'Доход'])
+        params_layout.addWidget(QLabel('Тип данных:'))
+        params_layout.addWidget(self.analysis_type)
 
-        # Выбор периода прогноза
-        self.forecast_period = QComboBox()
-        self.forecast_period.addItems(['1 неделя', '1 месяц', '3 месяца', '6 месяцев'])
-        analysis_params.addWidget(QLabel('Период прогноза:'))
-        analysis_params.addWidget(self.forecast_period)
+        self.forecast_start_date = QDateEdit(calendarPopup=True)
+        self.forecast_start_date.setDate(QDate.currentDate().addYears(-1))
+        params_layout.addWidget(QLabel('Начальная дата:'))
+        params_layout.addWidget(self.forecast_start_date)
 
-        # Кнопка генерации прогноза
+        self.forecast_end_date = QDateEdit(calendarPopup=True)
+        self.forecast_end_date.setDate(QDate.currentDate())
+        params_layout.addWidget(QLabel('Конечная дата:'))
+        params_layout.addWidget(self.forecast_end_date)
+
+        self.forecast_periods = QComboBox()
+        self.forecast_periods.addItems(['1 месяц', '3 месяца', '6 месяцев', '12 месяцев'])
+        self.forecast_periods.setCurrentText('3 месяца')
+        params_layout.addWidget(QLabel('Период прогноза:'))
+        params_layout.addWidget(self.forecast_periods)
+
         btn_generate = QPushButton('Сформировать прогноз')
         btn_generate.clicked.connect(self.generate_forecast)
-        analysis_params.addWidget(btn_generate)
+        params_layout.addWidget(btn_generate)
 
-        # Кнопка обновления данных
-        btn_refresh = QPushButton('Обновить данные')
-        btn_refresh.clicked.connect(self.refresh_analytics)
-        analysis_params.addWidget(btn_refresh)
+        forecast_layout.addLayout(params_layout)
 
-        layout.addLayout(analysis_params)
+        # Таблица результатов
+        self.forecast_table = QTableWidget()
+        self.forecast_table.setColumnCount(6)
+        self.forecast_table.setHorizontalHeaderLabels([
+            'Месяц', 'Фактическое', 'Прогноз', 'Абс. ошибка', 'Квадр. ошибка', 'Отн. ошибка (%)'
+        ])
+        self.forecast_table.setSortingEnabled(True)
+        forecast_layout.addWidget(self.forecast_table)
 
-        # Поле для отображения результатов анализа
-        self.analytics_result = QTextEdit()
-        self.analytics_result.setReadOnly(True)
-        layout.addWidget(self.analytics_result)
+        # График
+        self.figure = plt.Figure()
+        self.canvas = FigureCanvas(self.figure)
+        forecast_layout.addWidget(self.canvas)
+
+        forecast_group.setLayout(forecast_layout)
+        layout.addWidget(forecast_group)
 
         self.stacked_widget.addWidget(widget)
 
     def generate_forecast(self):
-        """Генерация прогноза."""
-        analysis_type = self.analysis_type.currentText()
-        forecast_period = self.forecast_period.currentText()
+        """Генерация прогноза с использованием скользящей средней."""
+        data_type = 'bookings' if self.analysis_type.currentText() == 'Бронирования' else 'revenue'
+        start_date = self.forecast_start_date.date().toString('yyyy-MM-dd')
+        end_date = self.forecast_end_date.date().toString('yyyy-MM-dd')
+        period_text = self.forecast_periods.currentText()
+        periods = {'1 месяц': 1, '3 месяца': 3, '6 месяцев': 6, '12 месяцев': 12}[period_text]
 
         try:
-            forecast_text = f"Прогноз: {analysis_type}\nПериод: {forecast_period}\n\n"
+            self.db.ensure_connection()
+            time_series = self.db.get_time_series(data_type, start_date, end_date)
+            if not time_series or len(time_series) < 3:
+                QMessageBox.warning(self, 'Ошибка', 'Недостаточно данных для прогноза (нужно минимум 3 месяца)')
+                return
 
-            if analysis_type == 'Занятость номеров':
-                self.db.cursor.execute("""
-                    SELECT AVG(COUNT(*)) as avg_bookings
-                    FROM bookings
-                    WHERE date(check_in_date) BETWEEN date('now', '-3 months') AND date('now')
-                    GROUP BY strftime('%W', check_in_date)
-                """)
-                avg_bookings = self.db.cursor.fetchone()[0] or 0
+            months, values = zip(*time_series)
+            values = list(values)
 
-                forecast_text += (
-                    f"Средняя загрузка за последние 3 месяца: {avg_bookings:.1f} "
-                    "бронирований в неделю\n"
+            # Расчет прогноза
+            n = 3  # Интервал сглаживания
+            forecast_values = Forecast.forecast_values(values, n, periods)
+            if not forecast_values:
+                QMessageBox.warning(self, 'Ошибка', 'Невозможно рассчитать прогноз')
+                return
+
+            # Подготовка данных для таблицы
+            self.forecast_table.setRowCount(len(values) + periods)
+            actual_values = values + [None] * periods
+            predicted_values = values[:len(values)] + forecast_values
+            errors = Forecast.calculate_errors(values[-min(len(forecast_values), len(values)):],
+                                             forecast_values[:min(len(forecast_values), len(values))])
+
+            for i, month in enumerate(months):
+                self.forecast_table.setItem(i, 0, QTableWidgetItem(month))
+                self.forecast_table.setItem(i, 1, QTableWidgetItem(str(actual_values[i]) if actual_values[i] else ""))
+                self.forecast_table.setItem(i, 2, QTableWidgetItem(str(predicted_values[i])))
+
+            # Прогнозные месяцы
+            last_month = datetime.strptime(months[-1], "%Y-%m")
+            forecast_months = list(months)
+            for i in range(periods):
+                next_month = last_month.replace(month=last_month.month % 12 + 1,
+                                               year=last_month.year + (last_month.month // 12))
+                forecast_months.append(next_month.strftime("%Y-%m"))
+                self.forecast_table.setItem(len(months) + i, 0, QTableWidgetItem(next_month.strftime("%Y-%m")))
+                self.forecast_table.setItem(len(months) + i, 2, QTableWidgetItem(str(forecast_values[i])))
+                last_month = next_month
+
+            # Ошибки
+            mean_abs_error, mean_sq_error, mean_rel_error = errors
+            self.forecast_table.setItem(0, 3, QTableWidgetItem(f"{mean_abs_error:.2f}"))
+            self.forecast_table.setItem(0, 4, QTableWidgetItem(f"{mean_sq_error:.2f}"))
+            self.forecast_table.setItem(0, 5, QTableWidgetItem(f"{mean_rel_error:.2f} ({Forecast.interpret_accuracy(mean_rel_error)})"))
+
+            # Построение графика
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
+            ax.plot(months, values, label="Фактические", marker="o")
+            ax.plot(forecast_months, predicted_values, label="Прогноз", marker="x")
+            ax.set_xlabel("Месяц")
+            ax.set_ylabel("Количество бронирований" if data_type == "bookings" else "Доход (руб.)")
+            ax.legend()
+            ax.grid(True)
+            plt.setp(ax.get_xticklabels(), rotation=45)
+            self.canvas.draw()
+
+            # Сохранение прогнозов
+            for i in range(periods):
+                self.db.save_forecast(
+                    forecast_months[len(months) + i],
+                    data_type,
+                    None,
+                    forecast_values[i],
+                    mean_rel_error if i == 0 else None
                 )
-                forecast_text += "Прогноз на выбранный период: стабильная загрузка\n"
 
-            elif analysis_type == 'Прогноз доходов':
-                self.db.cursor.execute("""
-                    SELECT AVG(SUM(total_price)) as avg_income
-                    FROM bookings
-                    WHERE date(created_at) BETWEEN date('now', '-3 months') AND date('now')
-                    GROUP BY strftime('%W', created_at)
-                """)
-                avg_income = self.db.cursor.fetchone()[0] or 0
-
-                forecast_text += (
-                    f"Средний доход за последние 3 месяца: {avg_income:.2f} руб. в неделю\n"
-                )
-                forecast_text += "Прогноз на выбранный период: стабильный доход\n"
-
-            self.analytics_result.setPlainText(forecast_text)
-        except sqlite3.Error as e:
+        except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось сформировать прогноз: {str(e)}')
-
-    def refresh_analytics(self):
-        """Обновление данных аналитики."""
-        self.generate_forecast()
 
     def show_bookings(self):
         """Отображение раздела бронирований."""
@@ -693,5 +759,4 @@ class AdminDashboard(QMainWindow):
 
     def closeEvent(self, event):
         """Обработка закрытия окна."""
-        self.db.close()  # Закрытие соединения с базой данных
         event.accept()

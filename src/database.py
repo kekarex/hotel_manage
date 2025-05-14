@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 class Database:
     """Класс для работы с базой данных SQLite для системы управления отелем."""
 
-    def __init__(self):
+    def __init__(self, db_path='hotel.db'):
         """Инициализация соединения с базой данных и создание таблиц."""
-        self.conn = sqlite3.connect('hotel.db')  # Подключение к базе данных
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)  # Подключение к базе данных
         self.cursor = self.conn.cursor()  # Создание курсора
         self.create_tables()  # Создание таблиц
         try:
@@ -24,12 +25,24 @@ class Database:
         self.check_data_integrity()  # Проверка целостности данных
         self.create_default_admin()  # Создание администраторов по умолчанию
 
+    def ensure_connection(self):
+        """Проверка и переоткрытие соединения, если оно закрыто."""
+        try:
+            # Попытка выполнить тестовый запрос для проверки соединения
+            self.cursor.execute("SELECT 1")
+            self.cursor.fetchone()
+        except (sqlite3.Error, AttributeError):
+            # Если соединение закрыто или отсутствует, переоткрываем его
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("PRAGMA foreign_keys = ON")
+
     def create_tables(self):
         """Создание всех необходимых таблиц в базе данных."""
         self.cursor.execute("PRAGMA foreign_keys = ON")  # Включение поддержки внешних ключей
 
         # Создание таблицы пользователей
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -44,7 +57,7 @@ class Database:
         """)
 
         # Создание таблицы номеров
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS rooms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 number TEXT UNIQUE NOT NULL,
@@ -53,14 +66,14 @@ class Database:
                 capacity INTEGER NOT NULL,
                 price_per_night REAL NOT NULL,
                 description TEXT,
-                status TEXT DEFAULT 'available' CHECK(status IN ('available', 'occupied',
+                status TEXT DEFAULT 'available' CHECK(status IN ('available', 'occupied', 
                                                                 'cleaning', 'maintenance')),
                 image_path TEXT
             )
         """)
 
         # Создание таблицы бронирований
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS bookings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 room_id INTEGER NOT NULL,
@@ -71,7 +84,7 @@ class Database:
                 check_out_date TEXT NOT NULL,
                 adults INTEGER NOT NULL,
                 children INTEGER DEFAULT 0,
-                status TEXT DEFAULT 'reserved' CHECK(status IN ('reserved', 'checked_in',
+                status TEXT DEFAULT 'reserved' CHECK(status IN ('reserved', 'checked_in', 
                                                                'checked_out', 'cancelled')),
                 total_price REAL NOT NULL,
                 deposit REAL DEFAULT 0,
@@ -83,7 +96,7 @@ class Database:
         """)
 
         # Создание таблицы услуг
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -94,7 +107,7 @@ class Database:
         """)
 
         # Создание таблицы связи бронирований и услуг
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS booking_services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 booking_id INTEGER NOT NULL,
@@ -106,7 +119,7 @@ class Database:
         """)
 
         # Создание таблицы клиентов
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS clients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 full_name TEXT NOT NULL,
@@ -118,7 +131,7 @@ class Database:
         """)
 
         # Создание таблицы отзывов
-        self.cursor.execute("""
+        self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 booking_id INTEGER NOT NULL,
@@ -126,6 +139,18 @@ class Database:
                 comment TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (booking_id) REFERENCES bookings(id)
+            )
+        """)
+
+        # Создание таблицы прогнозов
+        self.cursor.execute(""" 
+            CREATE TABLE IF NOT EXISTS forecasts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                forecast_date TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('bookings', 'revenue')),
+                actual_value REAL,
+                forecast_value REAL NOT NULL,
+                error REAL
             )
         """)
 
@@ -230,6 +255,48 @@ class Database:
             logging.error(f"Ошибка получения доступных номеров: {e}")
             return []
 
+    def get_time_series(self, data_type: str, start_date: str, end_date: str) -> list[tuple[str, float]]:
+        """Извлекает временной ряд для бронирований или дохода."""
+        try:
+            if data_type == "bookings":
+                query = """
+                    SELECT strftime('%Y-%m', check_in_date) AS month, COUNT(*) AS value
+                    FROM bookings
+                    WHERE check_in_date BETWEEN ? AND ?
+                    GROUP BY strftime('%Y-%m', check_in_date)
+                    ORDER BY month
+                """
+            elif data_type == "revenue":
+                query = """
+                    SELECT strftime('%Y-%m', check_in_date) AS month, SUM(total_price) AS value
+                    FROM bookings
+                    WHERE check_in_date BETWEEN ? AND ?
+                    GROUP BY strftime('%Y-%m', check_in_date)
+                    ORDER BY month
+                """
+            else:
+                return []
+            self.cursor.execute(query, (start_date, end_date))
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка получения временного ряда: {e}")
+            return []
+
+    def save_forecast(self, forecast_date: str, data_type: str, actual_value: float, forecast_value: float, error: float):
+        """Сохраняет результат прогноза."""
+        try:
+            self.cursor.execute(
+                """
+                INSERT INTO forecasts (forecast_date, type, actual_value, forecast_value, error)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (forecast_date, data_type, actual_value, forecast_value, error)
+            )
+            self.conn.commit()
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка сохранения прогноза: {e}")
+
     def close(self):
         """Закрытие соединения с базой данных."""
-        self.conn.close()
+        if self.conn:
+            self.conn.close()

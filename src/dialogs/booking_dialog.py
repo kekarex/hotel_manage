@@ -1,17 +1,20 @@
 import sqlite3
+import re
 from PyQt5.QtWidgets import QDialog, QLineEdit, QComboBox, QDateEdit, QSpinBox, QPushButton
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox
 from PyQt5.QtCore import QDate
+from src.database import Database
 
 
 class BookingDialog(QDialog):
     """Диалог для создания или редактирования бронирования."""
 
-    def __init__(self, db, booking=None):
+    def __init__(self, db, booking=None, user_id=None):
         """Инициализация диалога бронирования."""
         super().__init__()
-        self.db = db  # Сохранение объекта базы данных
+        self.db = db  # Используем переданный экземпляр Database
         self.booking = booking  # Сохранение данных бронирования (если редактирование)
+        self.user_id = user_id if user_id else 1  # ID пользователя, создающего бронирование
         self.setWindowTitle('Новое бронирование' if not booking else 'Редактирование бронирования')
         self.setFixedSize(500, 500)  # Установка фиксированного размера окна
 
@@ -27,22 +30,24 @@ class BookingDialog(QDialog):
 
         # Поле для телефона
         self.guest_phone = QLineEdit()
-        self.guest_phone.setPlaceholderText('Телефон')
+        self.guest_phone.setPlaceholderText('Телефон (+79991234567)')
         form.addRow('Телефон:', self.guest_phone)
 
         # Поле для email
         self.guest_email = QLineEdit()
-        self.guest_email.setPlaceholderText('Email')
+        self.guest_email.setPlaceholderText('Email (example@domain.com)')
         form.addRow('Email:', self.guest_email)
 
         # Поле для даты заезда
         self.check_in = QDateEdit(calendarPopup=True)
         self.check_in.setDate(QDate.currentDate())
+        self.check_in.dateChanged.connect(self.load_available_rooms)
         form.addRow('Дата заезда:', self.check_in)
 
         # Поле для даты выезда
         self.check_out = QDateEdit(calendarPopup=True)
         self.check_out.setDate(QDate.currentDate().addDays(1))
+        self.check_out.dateChanged.connect(self.load_available_rooms)
         form.addRow('Дата выезда:', self.check_out)
 
         # Поле для количества взрослых
@@ -108,12 +113,9 @@ class BookingDialog(QDialog):
             self.children.setValue(self.booking[8])
             self.status.setCurrentText(self.booking[9])
             self.total_price.setText(str(self.booking[10]))
-
-            self.db.cursor.execute("SELECT type FROM rooms WHERE id=?", (self.booking[1],))
-            room_type = self.db.cursor.fetchone()[0]
-            self.room_type.setCurrentText(room_type)
-
-        self.load_available_rooms()
+            self.room_type.setCurrentText(self.booking[12])  # room_type из JOIN
+            self.load_available_rooms()
+            self.room_number.setCurrentIndex(self.room_number.findData(self.booking[1]))  # room_id
 
     def load_available_rooms(self):
         """Загрузка доступных номеров для выбранного типа и дат."""
@@ -122,27 +124,38 @@ class BookingDialog(QDialog):
         check_out = self.check_out.date().toString('yyyy-MM-dd')
 
         try:
+            self.db.ensure_connection()
             rooms = self.db.get_available_rooms(check_in, check_out, room_type)
             self.room_number.clear()
             for room in rooms:
-                self.room_number.addItem(str(room[1]), room[0])  # Номер и ID номера
+                self.room_number.addItem(f"{room[1]} ({room[2]})", room[0])  # Номер и ID номера
+            if self.booking:
+                self.room_number.setCurrentIndex(self.room_number.findData(self.booking[1]))
         except sqlite3.Error as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить номера: {str(e)}')
 
     def calculate_price(self):
         """Расчет стоимости бронирования."""
-        room_type = self.room_type.currentText()
+        room_id = self.room_number.currentData()
         nights = self.check_in.date().daysTo(self.check_out.date())
 
         if nights <= 0:
             QMessageBox.warning(self, 'Ошибка', 'Дата выезда должна быть позже даты заезда')
             return
+        if not room_id:
+            QMessageBox.warning(self, 'Ошибка', 'Выберите номер')
+            return
 
         try:
+            self.db.ensure_connection()
             self.db.cursor.execute(
-                "SELECT price_per_night FROM rooms WHERE type=? LIMIT 1", (room_type,)
+                "SELECT price_per_night FROM rooms WHERE id=?", (room_id,)
             )
-            price_per_night = self.db.cursor.fetchone()[0]
+            result = self.db.cursor.fetchone()
+            if not result:
+                QMessageBox.warning(self, 'Ошибка', 'Не удалось найти цену для выбранного номера')
+                return
+            price_per_night = result[0]
             total_price = price_per_night * nights
             self.total_price.setText(f"{total_price:.2f}")
         except sqlite3.Error as e:
@@ -159,13 +172,41 @@ class BookingDialog(QDialog):
         children = self.children.value()
         room_id = self.room_number.currentData()
         status = self.status.currentText()
-        total_price = float(self.total_price.text() or 0)
+        total_price_text = self.total_price.text().strip()
 
+        # Валидация
         if not all([guest_name, guest_phone, room_id]):
-            QMessageBox.warning(self, 'Ошибка', 'Заполните все обязательные поля')
+            QMessageBox.warning(self, 'Ошибка', 'Заполните все обязательные поля (ФИО, телефон, номер)')
+            return
+        if not re.match(r'^\+?[1-9]\d{10,14}$', guest_phone):
+            QMessageBox.warning(self, 'Ошибка', 'Некорректный формат телефона (например, +79991234567)')
+            return
+        if guest_email and not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', guest_email):
+            QMessageBox.warning(self, 'Ошибка', 'Некорректный формат email (например, example@domain.com)')
+            return
+        if check_in >= check_out:
+            QMessageBox.warning(self, 'Ошибка', 'Дата выезда должна быть позже даты заезда')
+            return
+        if not total_price_text or float(total_price_text) <= 0:
+            QMessageBox.warning(self, 'Ошибка', 'Рассчитайте стоимость перед сохранением')
+            return
+
+        total_price = float(total_price_text)
+
+        # Проверка доступности номера
+        try:
+            self.db.ensure_connection()
+            rooms = self.db.get_available_rooms(check_in, check_out, self.room_type.currentText())
+            if not any(room[0] == room_id for room in rooms):
+                if not self.booking or self.booking[1] != room_id:
+                    QMessageBox.warning(self, 'Ошибка', 'Выбранный номер недоступен на указанные даты')
+                    return
+        except sqlite3.Error as e:
+            QMessageBox.warning(self, 'Ошибка', f'Не удалось проверить доступность номера: {str(e)}')
             return
 
         try:
+            self.db.ensure_connection()
             if self.booking:
                 # Обновление существующего бронирования
                 self.db.cursor.execute(
@@ -189,9 +230,10 @@ class BookingDialog(QDialog):
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (room_id, guest_name, guest_phone, guest_email, check_in, check_out,
-                     adults, children, status, total_price, 1)  # created_by=1 (админ)
+                     adults, children, status, total_price, self.user_id)
                 )
             self.db.conn.commit()
+            QMessageBox.information(self, 'Успех', 'Бронирование успешно сохранено')
             self.accept()
         except sqlite3.Error as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось сохранить бронирование: {str(e)}')
