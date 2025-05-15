@@ -1,0 +1,89 @@
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from src.forecast import Forecast
+import logging
+
+class ForecastWidget(QWidget):
+    def __init__(self, db, parent=None):
+        super().__init__(parent)
+        self.db = db
+        self.forecast = Forecast()
+        self.init_ui()
+        self.load_data()
+
+    def init_ui(self):
+        self.layout = QVBoxLayout()
+
+        # График
+        self.figure, self.ax = plt.subplots(figsize=(8, 4))
+        self.canvas = FigureCanvas(self.figure)
+        self.layout.addWidget(self.canvas)
+
+        # Метки для ошибок
+        self.error_label = QLabel("Ошибки прогноза: MAE: Н/Д, RMSE: Н/Д, MRE: Н/Д")
+        self.accuracy_label = QLabel("Точность прогноза: Н/Д")
+        self.layout.addWidget(self.error_label)
+        self.layout.addWidget(self.accuracy_label)
+
+        self.setLayout(self.layout)
+
+    def load_data(self):
+        try:
+            self.db.ensure_connection()
+            query = """
+            SELECT strftime('%Y-%m', check_in_date) as month, SUM(total_price) as revenue
+            FROM bookings
+            WHERE status IN ('checked_in', 'checked_out')
+            GROUP BY month
+            ORDER BY month
+            """
+            df = pd.read_sql_query(query, self.db.conn)
+            if df.empty:
+                self.error_label.setText("Нет данных для анализа")
+                return
+
+            # Исторические данные
+            months = df['month'].tolist()
+            revenues = df['revenue'].tolist()
+
+            # Параметры прогноза
+            n = 3  # Окно скользящей средней
+            periods = 3  # Прогноз на 3 месяца
+
+            # Прогноз
+            forecast_revenues = self.forecast.forecast_values(revenues, n, periods)
+            forecast_months = [f"{int(months[-1][:4]) + (int(months[-1][5:7]) + i)//12}-{(int(months[-1][5:7]) + i)%12 or 12:02d}" for i in range(1, periods + 1)]
+
+            # Ошибки (для последних исторических данных)
+            if len(revenues) >= n + 1:
+                test_actual = revenues[-3:]
+                test_predicted = self.forecast.forecast_values(revenues[:-3], n, 3)
+                mae, rmse, mre = self.forecast.calculate_errors(test_actual, test_predicted)
+                accuracy = self.forecast.interpret_accuracy(mre)
+                self.error_label.setText(f"Ошибки прогноза: MAE: {mae:.2f}, RMSE: {rmse:.2f}, MRE: {mre:.2f}%")
+                self.accuracy_label.setText(f"Точность прогноза: {accuracy}")
+            else:
+                self.error_label.setText("Недостаточно данных для расчёта ошибок")
+
+            # Построение графика
+            self.ax.clear()
+            self.ax.plot(months, revenues, marker='o', label='Исторические доходы')
+            if forecast_revenues:
+                all_months = months + forecast_months
+                all_revenues = revenues + forecast_revenues
+                self.ax.plot(all_months[-periods-1:], all_revenues[-periods-1:], marker='o', linestyle='--', color='red', label='Прогноз')
+            self.ax.set_title('Доход по месяцам и прогноз')
+            self.ax.set_xlabel('Месяц')
+            self.ax.set_ylabel('Доход (руб.)')
+            self.ax.legend()
+            plt.xticks(rotation=45)
+            self.figure.tight_layout()
+            self.canvas.draw()
+
+            logging.info(f"Загружены данные для прогноза: {len(months)} месяцев")
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки данных для прогноза: {e}")
+            self.error_label.setText(f"Ошибка: {str(e)}")

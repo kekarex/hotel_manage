@@ -30,7 +30,6 @@ class Database:
         try:
             if self.conn is None or self.cursor is None:
                 raise AttributeError("Соединение или курсор не инициализированы")
-            # Проверка активности соединения
             self.cursor.execute("SELECT 1")
             self.cursor.fetchone()
             logging.debug("Соединение с базой данных активно")
@@ -304,6 +303,56 @@ class Database:
             self.conn.commit()
         except sqlite3.Error as e:
             logging.error(f"Ошибка сохранения прогноза: {e}")
+
+    def get_services_cost(self, booking_id: int) -> float:
+        """Получение суммарной стоимости услуг для бронирования."""
+        self.ensure_connection()
+        try:
+            self.cursor.execute("""
+                SELECT SUM(s.price * bs.quantity)
+                FROM booking_services bs
+                JOIN services s ON bs.service_id = s.id
+                WHERE bs.booking_id = ?
+            """, (booking_id,))
+            result = self.cursor.fetchone()[0]
+            return result if result else 0.0
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка получения стоимости услуг: {e}")
+            return 0.0
+
+    def calculate_total_price(self, room_id: int, check_in_date: str, check_out_date: str, guest_email: str, service_ids: list[tuple[int, int]]) -> float:
+        """Расчет общей стоимости бронирования с учетом номера, скидки и услуг."""
+        self.ensure_connection()
+        try:
+            # Получение цены номера
+            self.cursor.execute("SELECT price_per_night FROM rooms WHERE id = ?", (room_id,))
+            price_per_night = self.cursor.fetchone()[0]
+
+            # Расчет количества ночей
+            check_in = datetime.strptime(check_in_date, '%Y-%m-%d')
+            check_out = datetime.strptime(check_out_date, '%Y-%m-%d')
+            nights = (check_out - check_in).days
+
+            # Получение скидки клиента
+            self.cursor.execute("SELECT discount FROM clients WHERE email = ?", (guest_email,))
+            discount = self.cursor.fetchone()
+            discount = discount[0] if discount else 0
+
+            # Стоимость номера с учетом скидки
+            room_cost = price_per_night * nights * (1 - discount / 100)
+
+            # Стоимость услуг
+            services_cost = 0.0
+            if service_ids:
+                for service_id, quantity in service_ids:
+                    self.cursor.execute("SELECT price FROM services WHERE id = ?", (service_id,))
+                    service_price = self.cursor.fetchone()[0]
+                    services_cost += service_price * quantity
+
+            return round(room_cost + services_cost, 2)
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка расчета общей стоимости: {e}")
+            raise
 
     def close(self):
         """Закрытие соединения с базой данных."""

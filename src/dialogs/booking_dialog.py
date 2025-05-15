@@ -1,23 +1,13 @@
 import sqlite3
 import re
 import logging
-from PyQt5.QtWidgets import QDialog, QLineEdit, QComboBox, QDateEdit, QSpinBox, QPushButton
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox
+from PyQt5.QtWidgets import QDialog, QLineEdit, QComboBox, QDateEdit, QSpinBox, QPushButton, QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox, QCheckBox, QLabel
 from PyQt5.QtCore import QDate
 from src.database import Database
 
 
 class BookingDialog(QDialog):
     """Диалог для создания или редактирования бронирования."""
-
-    # Фиксированные стоимости для типов номеров (для обходного решения)
-    FIXED_PRICES = {
-        'Эконом': 2000.00,
-        'Стандарт': 3500.00,
-        'Люкс': 6000.00,
-        'Апартаменты': 10000.00
-    }
-    USE_FIXED_PRICES = False  # Переключатель для использования фиксированных цен
 
     def __init__(self, db, booking=None, user_id=None):
         """Инициализация диалога бронирования."""
@@ -26,7 +16,7 @@ class BookingDialog(QDialog):
         self.booking = booking
         self.user_id = user_id if user_id else 1
         self.setWindowTitle('Новое бронирование' if not booking else 'Редактирование бронирования')
-        self.setFixedSize(500, 500)
+        self.setFixedSize(500, 600)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -81,6 +71,13 @@ class BookingDialog(QDialog):
 
         layout.addLayout(form)
 
+        # Услуги
+        self.services_layout = QVBoxLayout()
+        self.services_widgets = []
+        self.load_services()
+        layout.addWidget(QLabel('Дополнительные услуги:'))
+        layout.addLayout(self.services_layout)
+
         btn_calculate = QPushButton('Рассчитать стоимость')
         btn_calculate.clicked.connect(self.calculate_price)
         layout.addWidget(btn_calculate)
@@ -95,18 +92,58 @@ class BookingDialog(QDialog):
         layout.addLayout(buttons)
 
         if self.booking:
-            self.guest_name.setText(self.booking[2])
-            self.guest_phone.setText(self.booking[3])
-            self.guest_email.setText(self.booking[4] or '')
-            self.check_in.setDate(QDate.fromString(self.booking[5], 'yyyy-MM-dd'))
-            self.check_out.setDate(QDate.fromString(self.booking[6], 'yyyy-MM-dd'))
-            self.adults.setValue(self.booking[7])
-            self.children.setValue(self.booking[8])
-            self.status.setCurrentText(self.booking[9])
-            self.total_price.setText(str(self.booking[10]))
-            self.room_type.setCurrentText(self.booking[12])
-            self.load_available_rooms()
-            self.room_number.setCurrentIndex(self.room_number.findData(self.booking[1]))
+            self.load_booking_data()
+
+    def load_services(self):
+        """Загрузка доступных услуг."""
+        try:
+            self.db.ensure_connection()
+            self.db.cursor.execute("SELECT id, name, price FROM services WHERE is_active = 1")
+            services = self.db.cursor.fetchall()
+            for service in services:
+                service_id, name, price = service
+                checkbox = QCheckBox(f"{name} ({price:.2f} руб.)")
+                quantity_spinbox = QSpinBox()
+                quantity_spinbox.setRange(0, 10)
+                quantity_spinbox.setValue(0)
+                quantity_spinbox.setEnabled(False)
+                checkbox.stateChanged.connect(lambda state, sb=quantity_spinbox: sb.setEnabled(state == 2))
+                service_layout = QHBoxLayout()
+                service_layout.addWidget(checkbox)
+                service_layout.addWidget(QLabel('Количество:'))
+                service_layout.addWidget(quantity_spinbox)
+                self.services_layout.addLayout(service_layout)
+                self.services_widgets.append((service_id, checkbox, quantity_spinbox))
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки услуг: {e}")
+            QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить услуги')
+
+    def load_booking_data(self):
+        """Загрузка данных существующего бронирования."""
+        self.guest_name.setText(self.booking[2])
+        self.guest_phone.setText(self.booking[3])
+        self.guest_email.setText(self.booking[4] or '')
+        self.check_in.setDate(QDate.fromString(self.booking[5], 'yyyy-MM-dd'))
+        self.check_out.setDate(QDate.fromString(self.booking[6], 'yyyy-MM-dd'))
+        self.adults.setValue(self.booking[7])
+        self.children.setValue(self.booking[8])
+        self.status.setCurrentText(self.booking[9])
+        self.total_price.setText(f"{self.booking[10]:.2f}")
+        self.room_type.setCurrentText(self.booking[12])
+        self.load_available_rooms()
+        self.room_number.setCurrentIndex(self.room_number.findData(self.booking[1]))
+
+        try:
+            self.db.ensure_connection()
+            self.db.cursor.execute("SELECT service_id, quantity FROM booking_services WHERE booking_id = ?", (self.booking[0],))
+            selected_services = {row[0]: row[1] for row in self.db.cursor.fetchall()}
+            for service_id, checkbox, quantity_spinbox in self.services_widgets:
+                if service_id in selected_services:
+                    checkbox.setChecked(True)
+                    quantity_spinbox.setValue(selected_services[service_id])
+                    quantity_spinbox.setEnabled(True)
+        except sqlite3.Error as e:
+            logging.error(f"Ошибка загрузки услуг бронирования: {e}")
 
     def load_available_rooms(self):
         """Загрузка доступных номеров для выбранного типа и дат."""
@@ -131,12 +168,14 @@ class BookingDialog(QDialog):
     def calculate_price(self):
         """Расчет стоимости бронирования."""
         room_id = self.room_number.currentData()
-        nights = self.check_in.date().daysTo(self.check_out.date())
-        room_type = self.room_type.currentText()
+        check_in = self.check_in.date().toString('yyyy-MM-dd')
+        check_out = self.check_out.date().toString('yyyy-MM-dd')
+        guest_email = self.guest_email.text().strip()
+        service_ids = [(sid, sb.value()) for sid, cb, sb in self.services_widgets if cb.isChecked() and sb.value() > 0]
 
-        logging.info(f"Расчет стоимости: room_id={room_id}, nights={nights}, room_type={room_type}")
+        logging.info(f"Расчет стоимости: room_id={room_id}, check_in={check_in}, check_out={check_out}, services={service_ids}")
 
-        if nights <= 0:
+        if self.check_in.date() >= self.check_out.date():
             logging.warning("Некорректные даты: выезд раньше заезда")
             QMessageBox.warning(self, 'Ошибка', 'Дата выезда должна быть позже даты заезда')
             return
@@ -146,23 +185,7 @@ class BookingDialog(QDialog):
             return
 
         try:
-            if self.USE_FIXED_PRICES:
-                price_per_night = self.FIXED_PRICES.get(room_type, 2000.00)
-                logging.info(f"Используется фиксированная цена: {price_per_night} для {room_type}")
-            else:
-                self.db.ensure_connection()
-                self.db.cursor.execute(
-                    "SELECT price_per_night FROM rooms WHERE id=?", (room_id,)
-                )
-                result = self.db.cursor.fetchone()
-                if not result:
-                    logging.error("Цена номера не найдена")
-                    QMessageBox.warning(self, 'Ошибка', 'Не удалось найти цену для выбранного номера')
-                    return
-                price_per_night = result[0]
-                logging.info(f"Цена из базы данных: {price_per_night}")
-
-            total_price = price_per_night * nights
+            total_price = self.db.calculate_total_price(room_id, check_in, check_out, guest_email, service_ids)
             self.total_price.setText(f"{total_price:.2f}")
             logging.info(f"Стоимость рассчитана: {total_price}")
         except sqlite3.Error as e:
@@ -181,6 +204,7 @@ class BookingDialog(QDialog):
         room_id = self.room_number.currentData()
         status = self.status.currentText()
         total_price_text = self.total_price.text().strip()
+        service_ids = [(sid, sb.value()) for sid, cb, sb in self.services_widgets if cb.isChecked() and sb.value() > 0]
 
         logging.info(f"Сохранение брони: room_id={room_id}, guest_name={guest_name}, total_price={total_price_text}")
 
@@ -236,6 +260,8 @@ class BookingDialog(QDialog):
                     (guest_name, guest_phone, guest_email, check_in, check_out,
                      adults, children, room_id, status, total_price, self.booking[0])
                 )
+                self.db.cursor.execute("DELETE FROM booking_services WHERE booking_id = ?", (self.booking[0],))
+                booking_id = self.booking[0]
                 logging.info(f"Бронирование обновлено: id={self.booking[0]}")
             else:
                 self.db.cursor.execute(
@@ -248,7 +274,16 @@ class BookingDialog(QDialog):
                     (room_id, guest_name, guest_phone, guest_email, check_in, check_out,
                      adults, children, status, total_price, self.user_id)
                 )
+                booking_id = self.db.cursor.lastrowid
                 logging.info("Новое бронирование создано")
+
+            # Сохранение услуг
+            if service_ids:
+                self.db.cursor.executemany(
+                    "INSERT INTO booking_services (booking_id, service_id, quantity) VALUES (?, ?, ?)",
+                    [(booking_id, sid, qty) for sid, qty in service_ids]
+                )
+
             self.db.conn.commit()
             QMessageBox.information(self, 'Успех', 'Бронирование успешно сохранено')
             self.accept()

@@ -22,19 +22,18 @@ class AdminDashboard(QMainWindow):
     def __init__(self, user, db):
         """Инициализация панели администратора."""
         super().__init__()
-        self.user = user  # Сохранение данных пользователя
-        self.db = db  # Сохранение объекта базы данных
-        self.setWindowTitle(f'Панель администратора ({user[4]})')  # Установка заголовка
-        self.setFixedSize(1000, 800)  # Установка фиксированного размера окна
+        self.user = user
+        self.db = db
+        self.setWindowTitle(f'Панель администратора ({user[4]})')
+        self.setFixedSize(1000, 800)
 
-        self.init_ui()  # Инициализация интерфейса
-        self.load_data()  # Загрузка данных
-        self.show_bookings()  # Отображение раздела бронирований
+        self.init_ui()
+        self.load_data()
+        self.show_bookings()
 
-        # Настройка таймера для периодического обновления данных
         self.timer = QTimer()
         self.timer.timeout.connect(self.load_data)
-        self.timer.start(300000)  # Обновление каждые 5 минут
+        self.timer.start(300000)
 
     def load_data(self):
         """Обновление данных бронирований."""
@@ -48,34 +47,21 @@ class AdminDashboard(QMainWindow):
         main_layout = QHBoxLayout()
         central_widget.setLayout(main_layout)
 
-        # Создание боковой панели
-
         sidebar = QWidget()
         sidebar.setFixedWidth(200)
         sidebar_layout = QVBoxLayout()
         sidebar.setLayout(sidebar_layout)
 
-        # Кнопка для перехода к бронированиям
         btn_bookings = QPushButton('Бронирования')
         btn_bookings.clicked.connect(self.show_bookings)
-
-        # Кнопка для управления номерами
         btn_rooms = QPushButton('Управление номерами')
         btn_rooms.clicked.connect(self.show_rooms)
-
-        # Кнопка для управления клиентами
         btn_clients = QPushButton('Клиенты и скидки')
         btn_clients.clicked.connect(self.show_clients)
-
-        # Кнопка для финансовых отчетов
         btn_reports = QPushButton('Финансовые отчёты')
         btn_reports.clicked.connect(self.show_reports)
-
-        # Кнопка для аналитики и прогнозов
         btn_analytics = QPushButton('Аналитика и прогнозы')
         btn_analytics.clicked.connect(self.show_analytics)
-
-        # Кнопка выхода
         btn_logout = QPushButton('Выход')
         btn_logout.clicked.connect(self.logout)
 
@@ -89,17 +75,16 @@ class AdminDashboard(QMainWindow):
 
         main_layout.addWidget(sidebar)
 
-        # Создание виджета для переключения разделов
         self.stacked_widget = QStackedWidget()
         main_layout.addWidget(self.stacked_widget)
 
-        self.init_bookings()  # Инициализация раздела бронирований
-        self.init_rooms()  # Инициализация раздела номеров
-        self.init_clients()  # Инициализация раздела клиентов
-        self.init_reports()  # Инициализация раздела отчетов
-        self.init_analytics()  # Инициализация раздела аналитики
+        self.init_bookings()
+        self.init_rooms()
+        self.init_clients()
+        self.init_reports()
+        self.init_analytics()
 
-        self.stacked_widget.setCurrentIndex(0)  # Установка начального раздела
+        self.stacked_widget.setCurrentIndex(0)
 
     def init_bookings(self):
         """Инициализация раздела управления бронированиями."""
@@ -107,26 +92,17 @@ class AdminDashboard(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок раздела
         title = QLabel('Управление бронированиями')
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
         buttons = QHBoxLayout()
-
-        # Кнопка создания бронирования
         btn_create = QPushButton('Создать новое бронирование')
         btn_create.clicked.connect(self.create_booking)
-
-        # Кнопка редактирования бронирования
         btn_edit = QPushButton('Редактировать бронирование')
         btn_edit.clicked.connect(self.edit_booking)
-
-        # Кнопка отмены бронирования
         btn_cancel = QPushButton('Отменить бронирование')
         btn_cancel.clicked.connect(self.cancel_booking)
-
-        # Кнопка распределения номеров
         btn_assign = QPushButton('Распределить по номерам')
         btn_assign.clicked.connect(self.assign_rooms)
 
@@ -137,16 +113,15 @@ class AdminDashboard(QMainWindow):
 
         layout.addLayout(buttons)
 
-        # Создание таблицы бронирований
         self.bookings_table = QTableWidget()
-        self.bookings_table.setColumnCount(8)
+        self.bookings_table.setColumnCount(9)
         self.bookings_table.setHorizontalHeaderLabels(
-            ['ID', 'Даты', 'Категория', 'Гость', 'Телефон', 'Email', 'Статус', 'Оплата']
+            ['ID', 'Даты', 'Категория', 'Гость', 'Телефон', 'Email', 'Статус', 'Оплата', 'Услуги']
         )
         self.bookings_table.setSortingEnabled(True)
         layout.addWidget(self.bookings_table)
 
-        self.load_bookings_data()  # Загрузка данных бронирований
+        self.load_bookings_data()
         self.stacked_widget.addWidget(widget)
 
     def load_bookings_data(self):
@@ -161,9 +136,13 @@ class AdminDashboard(QMainWindow):
                        b.guest_phone,
                        b.guest_email,
                        b.status,
-                       b.total_price
+                       b.total_price,
+                       GROUP_CONCAT(s.name || ' (' || bs.quantity || ' шт.)') as services
                 FROM bookings b
                 JOIN rooms r ON b.room_id = r.id
+                LEFT JOIN booking_services bs ON b.id = bs.booking_id
+                LEFT JOIN services s ON bs.service_id = s.id
+                GROUP BY b.id
                 ORDER BY b.check_in_date DESC
             """)
             bookings = self.db.cursor.fetchall()
@@ -171,17 +150,16 @@ class AdminDashboard(QMainWindow):
             self.bookings_table.setRowCount(len(bookings))
             for row, booking in enumerate(bookings):
                 for col, value in enumerate(booking):
-                    item = QTableWidgetItem(str(value))
-
-                    # Окраска статуса
-                    if col == 6:  # Столбец статуса
+                    item = QTableWidgetItem(str(value) if value else '')
+                    if col == 6:  # Статус
                         if value == 'cancelled':
                             item.setBackground(QColor(255, 200, 200))
                         elif value == 'checked_in':
                             item.setBackground(QColor(200, 255, 200))
                         elif value == 'checked_out':
                             item.setBackground(QColor(200, 200, 255))
-
+                    elif col == 7:  # Оплата
+                        item.setText(f"{float(value):.2f} руб.")
                     self.bookings_table.setItem(row, col, item)
         except sqlite3.Error as e:
             logging.error(f"Ошибка загрузки бронирований: {e}")
@@ -262,18 +240,13 @@ class AdminDashboard(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок раздела
         title = QLabel('Управление номерами')
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
         buttons = QHBoxLayout()
-
-        # Кнопка добавления номера
         btn_add = QPushButton('Добавить новый номер')
         btn_add.clicked.connect(self.add_room)
-
-        # Кнопка редактирования статуса номера
         btn_edit = QPushButton('Редактировать статус')
         btn_edit.clicked.connect(self.edit_room_status)
 
@@ -282,7 +255,6 @@ class AdminDashboard(QMainWindow):
 
         layout.addLayout(buttons)
 
-        # Создание таблицы номеров
         self.rooms_table = QTableWidget()
         self.rooms_table.setColumnCount(6)
         self.rooms_table.setHorizontalHeaderLabels(
@@ -291,7 +263,7 @@ class AdminDashboard(QMainWindow):
         self.rooms_table.setSortingEnabled(True)
         layout.addWidget(self.rooms_table)
 
-        self.load_rooms_data()  # Загрузка данных номеров
+        self.load_rooms_data()
         self.stacked_widget.addWidget(widget)
 
     def load_rooms_data(self):
@@ -312,9 +284,7 @@ class AdminDashboard(QMainWindow):
             for row, room in enumerate(rooms):
                 for col, value in enumerate(room):
                     item = QTableWidgetItem(str(value))
-
-                    # Окраска статуса
-                    if col == 3:  # Столбец статуса
+                    if col == 3:
                         if value == 'occupied':
                             item.setBackground(QColor(255, 200, 200))
                         elif value == 'available':
@@ -323,7 +293,6 @@ class AdminDashboard(QMainWindow):
                             item.setBackground(QColor(255, 255, 200))
                         elif value == 'maintenance':
                             item.setBackground(QColor(200, 200, 255))
-
                     self.rooms_table.setItem(row, col, item)
         except sqlite3.Error as e:
             logging.error(f"Ошибка загрузки номеров: {e}")
@@ -364,18 +333,13 @@ class AdminDashboard(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок раздела
         title = QLabel('Клиенты и скидки')
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
         buttons = QHBoxLayout()
-
-        # Кнопка добавления клиента
         btn_add = QPushButton('Добавить клиента')
         btn_add.clicked.connect(self.add_client)
-
-        # Кнопка редактирования скидки
         btn_edit = QPushButton('Редактировать скидку')
         btn_edit.clicked.connect(self.edit_discount)
 
@@ -384,7 +348,6 @@ class AdminDashboard(QMainWindow):
 
         layout.addLayout(buttons)
 
-        # Создание таблицы клиентов
         self.clients_table = QTableWidget()
         self.clients_table.setColumnCount(6)
         self.clients_table.setHorizontalHeaderLabels(
@@ -393,7 +356,7 @@ class AdminDashboard(QMainWindow):
         self.clients_table.setSortingEnabled(True)
         layout.addWidget(self.clients_table)
 
-        self.load_clients_data()  # Загрузка данных клиентов
+        self.load_clients_data()
         self.stacked_widget.addWidget(widget)
 
     def load_clients_data(self):
@@ -412,11 +375,8 @@ class AdminDashboard(QMainWindow):
             for row, client in enumerate(clients):
                 for col, value in enumerate(client):
                     item = QTableWidgetItem(str(value))
-
-                    # Окраска скидки
-                    if col == 4 and value > 0:  # Столбец скидки
+                    if col == 4 and value > 0:
                         item.setBackground(QColor(200, 255, 200))
-
                     self.clients_table.setItem(row, col, item)
         except sqlite3.Error as e:
             logging.error(f"Ошибка загрузки клиентов: {e}")
@@ -457,50 +417,41 @@ class AdminDashboard(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок раздела
         title = QLabel('Финансовые отчёты')
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
         report_params = QHBoxLayout()
-
-        # Выбор типа отчета
         self.report_type = QComboBox()
         self.report_type.addItems(['Доходы', 'Расходы', 'Количество бронирований',
                                    'Популярность услуг'])
         report_params.addWidget(QLabel('Тип отчета:'))
         report_params.addWidget(self.report_type)
 
-        # Выбор даты начала
         self.start_date = QDateEdit(calendarPopup=True)
         self.start_date.setDate(QDate.currentDate().addMonths(-1))
         report_params.addWidget(QLabel('С:'))
         report_params.addWidget(self.start_date)
 
-        # Выбор даты окончания
         self.end_date = QDateEdit(calendarPopup=True)
         self.end_date.setDate(QDate.currentDate())
         report_params.addWidget(QLabel('По:'))
         report_params.addWidget(self.end_date)
 
-        # Кнопка генерации отчета
         btn_generate = QPushButton('Создать отчёт')
         btn_generate.clicked.connect(self.generate_report)
         report_params.addWidget(btn_generate)
 
-        # Кнопка экспорта в PDF
         btn_export = QPushButton('Экспорт в PDF')
         btn_export.clicked.connect(self.export_to_pdf)
         report_params.addWidget(btn_export)
 
-        # Кнопка экспорта в Excel
         btn_export_excel = QPushButton('Экспорт в Excel')
         btn_export_excel.clicked.connect(self.export_to_excel)
         report_params.addWidget(btn_export_excel)
 
         layout.addLayout(report_params)
 
-        # Поле для отображения результата отчета
         self.report_result = QTextEdit()
         self.report_result.setReadOnly(True)
         layout.addWidget(self.report_result)
@@ -553,7 +504,7 @@ class AdminDashboard(QMainWindow):
 
             elif report_type == 'Популярность услуг':
                 self.db.cursor.execute("""
-                    SELECT s.name, COUNT(*) as service_count
+                    SELECT s.name, SUM(bs.quantity) as service_count
                     FROM booking_services bs
                     JOIN services s ON bs.service_id = s.id
                     JOIN bookings b ON bs.booking_id = b.id
@@ -590,16 +541,13 @@ class AdminDashboard(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок раздела
         title = QLabel('Аналитика и прогнозы')
         title.setFont(QFont('Arial', 16, QFont.Bold))
         layout.addWidget(title)
 
-        # Группа для параметров прогноза
         forecast_group = QGroupBox("Прогноз бронирований и доходов")
         forecast_layout = QVBoxLayout()
 
-        # Параметры прогноза
         params_layout = QHBoxLayout()
         self.analysis_type = QComboBox()
         self.analysis_type.addItems(['Бронирования', 'Доход'])
@@ -628,7 +576,6 @@ class AdminDashboard(QMainWindow):
 
         forecast_layout.addLayout(params_layout)
 
-        # Таблица результатов
         self.forecast_table = QTableWidget()
         self.forecast_table.setColumnCount(6)
         self.forecast_table.setHorizontalHeaderLabels([
@@ -637,7 +584,6 @@ class AdminDashboard(QMainWindow):
         self.forecast_table.setSortingEnabled(True)
         forecast_layout.addWidget(self.forecast_table)
 
-        # График
         self.figure = plt.Figure()
         self.canvas = FigureCanvas(self.figure)
         forecast_layout.addWidget(self.canvas)
@@ -665,14 +611,12 @@ class AdminDashboard(QMainWindow):
             months, values = zip(*time_series)
             values = list(values)
 
-            # Расчет прогноза
-            n = 3  # Интервал сглаживания
+            n = 3
             forecast_values = Forecast.forecast_values(values, n, periods)
             if not forecast_values:
                 QMessageBox.warning(self, 'Ошибка', 'Невозможно рассчитать прогноз')
                 return
 
-            # Подготовка данных для таблицы
             self.forecast_table.setRowCount(len(values) + periods)
             actual_values = values + [None] * periods
             predicted_values = values[:len(values)] + forecast_values
@@ -684,7 +628,6 @@ class AdminDashboard(QMainWindow):
                 self.forecast_table.setItem(i, 1, QTableWidgetItem(str(actual_values[i]) if actual_values[i] else ""))
                 self.forecast_table.setItem(i, 2, QTableWidgetItem(str(predicted_values[i])))
 
-            # Прогнозные месяцы
             last_month = datetime.strptime(months[-1], "%Y-%m")
             forecast_months = list(months)
             for i in range(periods):
@@ -695,13 +638,11 @@ class AdminDashboard(QMainWindow):
                 self.forecast_table.setItem(len(months) + i, 2, QTableWidgetItem(str(forecast_values[i])))
                 last_month = next_month
 
-            # Ошибки
             mean_abs_error, mean_sq_error, mean_rel_error = errors
             self.forecast_table.setItem(0, 3, QTableWidgetItem(f"{mean_abs_error:.2f}"))
             self.forecast_table.setItem(0, 4, QTableWidgetItem(f"{mean_sq_error:.2f}"))
             self.forecast_table.setItem(0, 5, QTableWidgetItem(f"{mean_rel_error:.2f} ({Forecast.interpret_accuracy(mean_rel_error)})"))
 
-            # Построение графика
             self.figure.clear()
             ax = self.figure.add_subplot(111)
             ax.plot(months, values, label="Фактические", marker="o")
@@ -713,7 +654,6 @@ class AdminDashboard(QMainWindow):
             plt.setp(ax.get_xticklabels(), rotation=45)
             self.canvas.draw()
 
-            # Сохранение прогнозов
             for i in range(periods):
                 self.db.save_forecast(
                     forecast_months[len(months) + i],
