@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QLineEdit, QPushButto
                              QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox,
                              QStackedWidget)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont, QPixmap, QIcon
 import sqlite3
 from src.database import Database
 from src.admin_dashboard import AdminDashboard
@@ -20,6 +20,9 @@ class AuthWindow(QMainWindow):
         logging.info(f"AuthWindow получил экземпляр Database: {id(self.db)}")
         self.setWindowTitle('Система управления отелем')  # Установка заголовка окна
         self.setFixedSize(1000, 800)  # Установка фиксированного размера окна
+
+        # Установка пользовательской иконки окна
+        self.setWindowIcon(QIcon('assets/hotel_icon.png'))
 
         self.stacked_widget = QStackedWidget()  # Создание виджета для переключения экранов
         self.setCentralWidget(self.stacked_widget)
@@ -38,17 +41,33 @@ class AuthWindow(QMainWindow):
         widget.setLayout(layout)
 
         # Добавление логотипа отеля
-        logo = QLabel()
+        '''logo = QLabel()
         pixmap = QPixmap('assets/hotel_logo.png')
         if not pixmap.isNull():
             logo.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
             logo.setAlignment(Qt.AlignCenter)
-            layout.addWidget(logo)
+            layout.addWidget(logo)'''
+
+        # Приветственная надпись
+        welcome_label = QLabel('Добро пожаловать!')
+        font = QFont()
+        font.setPointSize(18)
+        font.setBold(True)
+        welcome_label.setFont(font)
+        welcome_label.setAlignment(Qt.AlignCenter)
+        welcome_label.setStyleSheet("font-size: 40px; color: #000000;")
+        welcome_label.update()
+        layout.addWidget(welcome_label)
+        layout.addSpacing(20)
 
         # Заголовок экрана
         title = QLabel('Выберите вашу роль:')
-        title.setFont(QFont('Arial', 16))
+        font = QFont()
+        font.setPointSize(18)
+        title.setFont(font)
         title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 18px; color: #000000;")
+        title.update()
         layout.addWidget(title)
 
         # Кнопка для администратора
@@ -74,8 +93,12 @@ class AuthWindow(QMainWindow):
 
         # Заголовок формы
         title = QLabel('Вход для администратора')
-        title.setFont(QFont('Arial', 16))
+        font = QFont()
+        font.setPointSize(24)
+        title.setFont(font)
         title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 24px; color: #000000;")
+        title.update()
         layout.addWidget(title)
 
         form = QFormLayout()
@@ -118,8 +141,12 @@ class AuthWindow(QMainWindow):
 
         # Заголовок формы
         title = QLabel('Вход для гостя')
-        title.setFont(QFont('Arial', 16))
+        font = QFont()
+        font.setPointSize(24)
+        title.setFont(font)
         title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 24px; color: #000000;")
+        title.update()
         layout.addWidget(title)
 
         form = QFormLayout()
