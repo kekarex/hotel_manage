@@ -645,14 +645,23 @@ class AdminDashboard(QMainWindow):
 
             self.figure.clear()
             ax = self.figure.add_subplot(111)
-            ax.plot(months, values, label="Фактические", marker="o")
-            ax.plot(forecast_months, predicted_values, label="Прогноз", marker="x")
+            # Сброс стилей Matplotlib и отключение циклической палитры
+            plt.style.use('default')
+            plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['#0000FF', '#FF0000'])
+            # Рисуем линию фактических данных (синий цвет)
+            line_actual = ax.plot(months, values, label="Фактические", marker="o", color='#0000FF')
+            # Рисуем линию прогноза (красный цвет, пунктир)
+            line_forecast = ax.plot(forecast_months, predicted_values, label="Прогноз", marker="x", linestyle='--', color='#FF0000')
             ax.set_xlabel("Месяц")
             ax.set_ylabel("Количество бронирований" if data_type == "bookings" else "Доход (руб.)")
             ax.legend()
             ax.grid(True)
             plt.setp(ax.get_xticklabels(), rotation=45)
             self.canvas.draw()
+
+            # Логирование для проверки применения цвета
+            logging.info(f"Цвет линии фактических данных в AdminDashboard: {line_actual[0].get_color()}")
+            logging.info(f"Цвет линии прогноза в AdminDashboard: {line_forecast[0].get_color()}")
 
             for i in range(periods):
                 self.db.save_forecast(

@@ -49,6 +49,9 @@ class ForecastWidget(QWidget):
             months = df['month'].tolist()
             revenues = df['revenue'].tolist()
 
+            # Логирование данных для отладки
+            logging.info(f"Данные для графика: months={months}, revenues={revenues}")
+
             # Параметры прогноза
             n = 3  # Окно скользящей средней
             periods = 3  # Прогноз на 3 месяца
@@ -70,11 +73,16 @@ class ForecastWidget(QWidget):
 
             # Построение графика
             self.ax.clear()
-            self.ax.plot(months, revenues, marker='o', label='Исторические доходы')
+            # Сброс стилей Matplotlib и отключение циклической палитры
+            plt.style.use('default')
+            plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['#0000FF', '#FF0000'])  # Явно задаём цвета: синий для фактических, красный для прогноза
+            # Рисуем линию фактических данных (синий цвет)
+            line_actual = self.ax.plot(months, revenues, marker='o', color='#0000FF', label='Исторические доходы')
             if forecast_revenues:
                 all_months = months + forecast_months
                 all_revenues = revenues + forecast_revenues
-                self.ax.plot(all_months[-periods-1:], all_revenues[-periods-1:], marker='o', linestyle='--', color='red', label='Прогноз')
+                # Рисуем линию прогноза (красный цвет, пунктир)
+                line_forecast = self.ax.plot(all_months[-periods-1:], all_revenues[-periods-1:], marker='o', linestyle='--', color='#FF0000', label='Прогноз')
             self.ax.set_title('Доход по месяцам и прогноз')
             self.ax.set_xlabel('Месяц')
             self.ax.set_ylabel('Доход (руб.)')
@@ -82,6 +90,11 @@ class ForecastWidget(QWidget):
             plt.xticks(rotation=45)
             self.figure.tight_layout()
             self.canvas.draw()
+
+            # Логирование для проверки применения цвета
+            logging.info(f"Цвет линии фактических данных: {line_actual[0].get_color()}")
+            if forecast_revenues:
+                logging.info(f"Цвет линии прогноза: {line_forecast[0].get_color()}")
 
             logging.info(f"Загружены данные для прогноза: {len(months)} месяцев")
         except sqlite3.Error as e:
