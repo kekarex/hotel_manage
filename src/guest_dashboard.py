@@ -17,6 +17,7 @@ class GuestDashboard(QMainWindow):
     """
     @brief Класс панели гостя для управления бронированиями и отзывами.
     """
+
     def __init__(self, user, db):
         """
         @brief Инициализация панели гостя.

@@ -4,14 +4,26 @@
 """
 
 import logging
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
-                             QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox,
-                             QStackedWidget)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QPixmap, QIcon
+
 import sqlite3
-from src.database import Database
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QLineEdit
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QFormLayout
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QStackedWidget
+
 from src.admin_dashboard import AdminDashboard
+from src.database import Database
 from src.guest_dashboard import GuestDashboard
 
 
@@ -25,23 +37,22 @@ class AuthWindow(QMainWindow):
         @param db Экземпляр класса Database для работы с базой данных.
         """
         super().__init__()
-        self.db = db  # Использование переданного экземпляра Database
+        self.db = db
         logging.info(f"AuthWindow получил экземпляр Database: {id(self.db)}")
-        self.setWindowTitle('Система управления отелем')  # Установка заголовка окна
-        self.setFixedSize(1000, 800)  # Установка фиксированного размера окна
+        self.setWindowTitle("Система управления отелем")
+        self.setFixedSize(1000, 800)
 
-        # Установка пользовательской иконки окна
-        self.setWindowIcon(QIcon('assets/hotel_icon.png'))
+        self.setWindowIcon(QIcon("assets/hotel_icon.png"))
 
-        self.stacked_widget = QStackedWidget()  # Создание виджета для переключения экранов
+        self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
-        self.init_role_selection()  # Инициализация экрана выбора роли
-        self.init_admin_login()  # Инициализация формы входа для администратора
-        self.init_guest_login()  # Инициализация формы входа для гостя
-        self.init_guest_register()  # Инициализация формы регистрации гостя
+        self.init_role_selection()
+        self.init_admin_login()
+        self.init_guest_login()
+        self.init_guest_register()
 
-        self.stacked_widget.setCurrentIndex(0)  # Установка начального экрана
+        self.stacked_widget.setCurrentIndex(0)
 
     def init_role_selection(self):
         """
@@ -59,8 +70,7 @@ class AuthWindow(QMainWindow):
             logo.setAlignment(Qt.AlignCenter)
             layout.addWidget(logo)'''
 
-        # Приветственная надпись
-        welcome_label = QLabel('Добро пожаловать!')
+        welcome_label = QLabel("Добро пожаловать!")
         font = QFont()
         font.setPointSize(18)
         font.setBold(True)
@@ -71,8 +81,7 @@ class AuthWindow(QMainWindow):
         layout.addWidget(welcome_label)
         layout.addSpacing(20)
 
-        # Заголовок экрана
-        title = QLabel('Выберите вашу роль:')
+        title = QLabel("Выберите вашу роль:")
         font = QFont()
         font.setPointSize(18)
         title.setFont(font)
@@ -81,14 +90,12 @@ class AuthWindow(QMainWindow):
         title.update()
         layout.addWidget(title)
 
-        # Кнопка для администратора
-        btn_admin = QPushButton('Администратор')
-        btn_admin.setFont(QFont('Arial', 14))
+        btn_admin = QPushButton("Администратор")
+        btn_admin.setFont(QFont("Arial", 14))
         btn_admin.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
-        # Кнопка для гостя
-        btn_guest = QPushButton('Гость')
-        btn_guest.setFont(QFont('Arial', 14))
+        btn_guest = QPushButton("Гость")
+        btn_guest.setFont(QFont("Arial", 14))
         btn_guest.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
 
         layout.addWidget(btn_admin)
@@ -104,8 +111,7 @@ class AuthWindow(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок формы
-        title = QLabel('Вход для администратора')
+        title = QLabel("Вход для администратора")
         font = QFont()
         font.setPointSize(24)
         title.setFont(font)
@@ -116,27 +122,23 @@ class AuthWindow(QMainWindow):
 
         form = QFormLayout()
 
-        # Поле для логина
         self.admin_username = QLineEdit()
-        self.admin_username.setPlaceholderText('Логин')
-        form.addRow('Логин:', self.admin_username)
+        self.admin_username.setPlaceholderText("Логин")
+        form.addRow("Логин:", self.admin_username)
 
-        # Поле для пароля
         self.admin_password = QLineEdit()
-        self.admin_password.setPlaceholderText('Пароль')
+        self.admin_password.setPlaceholderText("Пароль")
         self.admin_password.setEchoMode(QLineEdit.Password)
-        form.addRow('Пароль:', self.admin_password)
+        form.addRow("Пароль:", self.admin_password)
 
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
 
-        # Кнопка входа
-        btn_login = QPushButton('Войти')
+        btn_login = QPushButton("Войти")
         btn_login.clicked.connect(self.admin_login)
 
-        # Кнопка возврата
-        btn_back = QPushButton('Назад')
+        btn_back = QPushButton("Назад")
         btn_back.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
 
         buttons.addWidget(btn_back)
@@ -154,8 +156,7 @@ class AuthWindow(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок формы
-        title = QLabel('Вход для гостя')
+        title = QLabel("Вход для гостя")
         font = QFont()
         font.setPointSize(24)
         title.setFont(font)
@@ -166,31 +167,26 @@ class AuthWindow(QMainWindow):
 
         form = QFormLayout()
 
-        # Поле для логина
         self.guest_username = QLineEdit()
-        self.guest_username.setPlaceholderText('Логин')
-        form.addRow('Логин:', self.guest_username)
+        self.guest_username.setPlaceholderText("Логин")
+        form.addRow("Логин:", self.guest_username)
 
-        # Поле для пароля
         self.guest_password = QLineEdit()
-        self.guest_password.setPlaceholderText('Пароль')
+        self.guest_password.setPlaceholderText("Пароль")
         self.guest_password.setEchoMode(QLineEdit.Password)
-        form.addRow('Пароль:', self.guest_password)
+        form.addRow("Пароль:", self.guest_password)
 
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
 
-        # Кнопка возврата
-        btn_back = QPushButton('Назад')
+        btn_back = QPushButton("Назад")
         btn_back.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
 
-        # Кнопка входа
-        btn_login = QPushButton('Войти')
+        btn_login = QPushButton("Войти")
         btn_login.clicked.connect(self.guest_login)
 
-        # Кнопка регистрации
-        btn_register = QPushButton('Зарегистрироваться')
+        btn_register = QPushButton("Зарегистрироваться")
         btn_register.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
 
         buttons.addWidget(btn_back)
@@ -209,50 +205,42 @@ class AuthWindow(QMainWindow):
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
-        # Заголовок формы
-        title = QLabel('Регистрация гостя')
-        title.setFont(QFont('Arial', 16))
+        title = QLabel("Регистрация гостя")
+        title.setFont(QFont("Arial", 16))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         form = QFormLayout()
 
-        # Поле для ФИО
         self.guest_register_fullname = QLineEdit()
-        self.guest_register_fullname.setPlaceholderText('ФИО')
-        form.addRow('ФИО:', self.guest_register_fullname)
+        self.guest_register_fullname.setPlaceholderText("ФИО")
+        form.addRow("ФИО:", self.guest_register_fullname)
 
-        # Поле для email
         self.guest_register_email = QLineEdit()
-        self.guest_register_email.setPlaceholderText('Email')
-        form.addRow('Email:', self.guest_register_email)
+        self.guest_register_email.setPlaceholderText("Email")
+        form.addRow("Email:", self.guest_register_email)
 
-        # Поле для телефона
         self.guest_register_phone = QLineEdit()
-        self.guest_register_phone.setPlaceholderText('Телефон')
-        form.addRow('Телефон:', self.guest_register_phone)
+        self.guest_register_phone.setPlaceholderText("Телефон")
+        form.addRow("Телефон:", self.guest_register_phone)
 
-        # Поле для логина
         self.guest_register_username = QLineEdit()
-        self.guest_register_username.setPlaceholderText('Логин')
-        form.addRow('Логин:', self.guest_register_username)
+        self.guest_register_username.setPlaceholderText("Логин")
+        form.addRow("Логин:", self.guest_register_username)
 
-        # Поле для пароля
         self.guest_register_password = QLineEdit()
-        self.guest_register_password.setPlaceholderText('Пароль')
+        self.guest_register_password.setPlaceholderText("Пароль")
         self.guest_register_password.setEchoMode(QLineEdit.Password)
-        form.addRow('Пароль:', self.guest_register_password)
+        form.addRow("Пароль:", self.guest_register_password)
 
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
 
-        # Кнопка регистрации
-        btn_register = QPushButton('Зарегистрироваться')
+        btn_register = QPushButton("Зарегистрироваться")
         btn_register.clicked.connect(self.register_guest)
 
-        # Кнопка возврата
-        btn_back = QPushButton('Назад')
+        btn_back = QPushButton("Назад")
         btn_back.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
 
         buttons.addWidget(btn_back)
@@ -284,21 +272,24 @@ class AuthWindow(QMainWindow):
         password = self.admin_password.text().strip()
 
         if not username or not password:
-            QMessageBox.warning(self, 'Ошибка', 'Введите логин и пароль')
+            QMessageBox.warning(self, "Ошибка", "Введите логин и пароль")
             return
 
         try:
-            self.db.ensure_connection()  # Проверка соединения
+            self.db.ensure_connection()
             user = self.db.get_user(username, password)
             if not user:
                 logging.warning(f"Неуспешная авторизация администратора: {username}")
-                QMessageBox.warning(self, 'Ошибка', 'Неверные учетные данные')
+                QMessageBox.warning(self, "Ошибка", "Неверные учетные данные")
                 return
 
-            if user[3].lower() != 'admin':
+            if user[3].lower() != "admin":
                 logging.warning(f"Недостаточно прав для {username}")
-                QMessageBox.warning(self, 'Ошибка',
-                                    'Недостаточно прав для входа как администратор')
+                QMessageBox.warning(
+                    self,
+                    "Ошибка",
+                    "Недостаточно прав для входа как администратор",
+                )
                 return
 
             logging.info(f"Успешная авторизация администратора: {username}")
@@ -307,7 +298,7 @@ class AuthWindow(QMainWindow):
 
         except Exception as e:
             logging.error(f"Ошибка входа администратора: {e}")
-            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
+            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {str(e)}")
 
     def guest_login(self):
         """
@@ -318,24 +309,26 @@ class AuthWindow(QMainWindow):
 
         if not username or not password:
             logging.warning("Пустой логин или пароль для гостя")
-            QMessageBox.warning(self, 'Ошибка', 'Введите логин и пароль')
+            QMessageBox.warning(self, "Ошибка", "Введите логин и пароль")
             return
 
         try:
-            self.db.ensure_connection()  # Проверка соединения
+            self.db.ensure_connection()
             self.db.cursor.execute(
                 """
                 SELECT * FROM users WHERE username=? AND password=? AND role='guest'
                 AND is_active=1
-                """, (username, password)
+                """,
+                (username, password),
             )
             user = self.db.cursor.fetchone()
 
             if not user:
                 logging.warning(f"Неуспешная авторизация гостя: {username}")
                 QMessageBox.warning(
-                    self, 'Ошибка',
-                    'Неверные учетные данные или недостаточно прав для входа как гость'
+                    self,
+                    "Ошибка",
+                    "Неверные учетные данные или недостаточно прав для входа как гость",
                 )
                 return
 
@@ -345,7 +338,7 @@ class AuthWindow(QMainWindow):
 
         except Exception as e:
             logging.error(f"Ошибка входа гостя: {e}")
-            QMessageBox.critical(self, 'Ошибка', f'Произошла ошибка: {str(e)}')
+            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {str(e)}")
 
     def register_guest(self):
         """
@@ -359,39 +352,41 @@ class AuthWindow(QMainWindow):
 
         if not all([fullname, email, username, password]):
             logging.warning("Не заполнены обязательные поля при регистрации")
-            QMessageBox.warning(self, 'Ошибка', 'Заполните все обязательные поля')
+            QMessageBox.warning(self, "Ошибка", "Заполните все обязательные поля")
             return
 
-        if '@' not in email or '.' not in email.split('@')[-1]:
+        if "@" not in email or "." not in email.split("@")[-1]:
             logging.warning(f"Некорректный email при регистрации: {email}")
-            QMessageBox.warning(self, 'Ошибка', 'Введите корректный email')
+            QMessageBox.warning(self, "Ошибка", "Введите корректный email")
             return
 
         try:
-            self.db.ensure_connection()  # Проверка соединения
-            success = self.db.add_user(username, password, 'guest', fullname, email, phone)
+            self.db.ensure_connection()
+            success = self.db.add_user(username, password, "guest", fullname, email, phone)
             if success:
                 self.db.cursor.execute(
                     "INSERT INTO clients (full_name, email, phone) VALUES (?, ?, ?)",
-                    (fullname, email, phone)
+                    (fullname, email, phone),
                 )
                 self.db.conn.commit()
                 logging.info(f"Успешная регистрация гостя: {username}")
                 QMessageBox.information(
-                    self, 'Успех',
-                    'Регистрация прошла успешно. Теперь вы можете войти.'
+                    self,
+                    "Успех",
+                    "Регистрация прошла успешно. Теперь вы можете войти.",
                 )
                 self.clear_fields()
                 self.stacked_widget.setCurrentIndex(2)
             else:
                 logging.warning(f"Пользователь существует: {username} или {email}")
                 QMessageBox.warning(
-                    self, 'Ошибка',
-                    'Пользователь с таким логином или email уже существует'
+                    self,
+                    "Ошибка",
+                    "Пользователь с таким логином или email уже существует",
                 )
         except sqlite3.Error as e:
             logging.error(f"Ошибка регистрации гостя: {e}")
-            QMessageBox.warning(self, 'Ошибка', f'Ошибка при регистрации: {str(e)}')
+            QMessageBox.warning(self, "Ошибка", f"Ошибка при регистрации: {str(e)}")
 
     def logout(self):
         """

@@ -3,7 +3,11 @@
 @brief Модуль, реализующий диалог для редактирования скидки клиента.
 """
 
-from PyQt5.QtWidgets import QDialog, QSpinBox, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QSpinBox
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout
 from PyQt5.QtWidgets import QMessageBox
 
 
@@ -17,7 +21,7 @@ class DiscountDialog(QDialog):
         @param current_discount Текущее значение скидки клиента (в процентах).
         """
         super().__init__()
-        self.setWindowTitle('Редактировать скидку')
+        self.setWindowTitle("Редактировать скидку")
         self.setFixedSize(300, 200)  # Установка фиксированного размера окна
 
         layout = QVBoxLayout()
@@ -27,17 +31,17 @@ class DiscountDialog(QDialog):
         self.discount = QSpinBox()
         self.discount.setRange(0, 50)
         self.discount.setValue(current_discount)
-        self.discount.setSuffix('%')
+        self.discount.setSuffix("%")
         layout.addWidget(self.discount)
 
         buttons = QHBoxLayout()
 
         # Кнопка сохранения
-        btn_save = QPushButton('Сохранить')
+        btn_save = QPushButton("Сохранить")
         btn_save.clicked.connect(self.accept)
 
         # Кнопка отмены
-        btn_cancel = QPushButton('Отмена')
+        btn_cancel = QPushButton("Отмена")
         btn_cancel.clicked.connect(self.reject)
 
         buttons.addWidget(btn_save)

@@ -3,7 +3,11 @@
 @brief Модуль, реализующий диалог для изменения статуса номера.
 """
 
-from PyQt5.QtWidgets import QDialog, QComboBox, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout
 from PyQt5.QtWidgets import QMessageBox
 
 
@@ -14,10 +18,11 @@ class RoomStatusDialog(QDialog):
     def __init__(self, current_status):
         """
         @brief Инициализация диалога изменения статуса номера.
-        @param current_status Текущий статус номера (например, 'available', 'occupied').
+        @param current_status Текущий статус номера (например, 'available',
+                              'occupied').
         """
         super().__init__()
-        self.setWindowTitle('Изменить статус номера')
+        self.setWindowTitle("Изменить статус номера")
         self.setFixedSize(300, 200)  # Установка фиксированного размера окна
 
         layout = QVBoxLayout()
@@ -25,18 +30,18 @@ class RoomStatusDialog(QDialog):
 
         # Выбор нового статуса
         self.status = QComboBox()
-        self.status.addItems(['available', 'occupied', 'cleaning', 'maintenance'])
+        self.status.addItems(["available", "occupied", "cleaning", "maintenance"])
         self.status.setCurrentText(current_status)
         layout.addWidget(self.status)
 
         buttons = QHBoxLayout()
 
         # Кнопка сохранения
-        btn_save = QPushButton('Сохранить')
+        btn_save = QPushButton("Сохранить")
         btn_save.clicked.connect(self.accept)
 
         # Кнопка отмены
-        btn_cancel = QPushButton('Отмена')
+        btn_cancel = QPushButton("Отмена")
         btn_cancel.clicked.connect(self.reject)
 
         buttons.addWidget(btn_save)

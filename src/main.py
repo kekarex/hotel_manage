@@ -7,8 +7,9 @@ from src.auth_window import AuthWindow
 
 
 def main():
-    """Инициализация и запуск приложения управления отелем."""
-    # Настройка логирования
+    """
+    @brief Инициализация и запуск приложения.
+    """
     logging.basicConfig(
         filename='hotel_app.log',
         level=logging.DEBUG,
