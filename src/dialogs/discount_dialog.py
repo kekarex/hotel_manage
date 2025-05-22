@@ -1,12 +1,21 @@
+"""
+@file discount_dialog.py
+@brief Модуль, реализующий диалог для редактирования скидки клиента.
+"""
+
 from PyQt5.QtWidgets import QDialog, QSpinBox, QPushButton, QVBoxLayout, QHBoxLayout
 from PyQt5.QtWidgets import QMessageBox
 
 
 class DiscountDialog(QDialog):
-    """Диалог для редактирования скидки клиента."""
-
+    """
+    @brief Диалог для редактирования скидки клиента.
+    """
     def __init__(self, current_discount):
-        """Инициализация диалога редактирования скидки."""
+        """
+        @brief Инициализация диалога редактирования скидки.
+        @param current_discount Текущее значение скидки клиента (в процентах).
+        """
         super().__init__()
         self.setWindowTitle('Редактировать скидку')
         self.setFixedSize(300, 200)  # Установка фиксированного размера окна
@@ -37,5 +46,8 @@ class DiscountDialog(QDialog):
         layout.addLayout(buttons)
 
     def get_discount(self):
-        """Получение значения скидки."""
+        """
+        @brief Получение значения скидки, введенного пользователем.
+        @return int Значение скидки в процентах.
+        """
         return self.discount.value()

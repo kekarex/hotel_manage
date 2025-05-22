@@ -1,13 +1,22 @@
+"""
+@file database.py
+@brief Модуль, реализующий класс для работы с базой данных SQLite для системы управления отелем.
+"""
+
 import sqlite3
 import logging
 from datetime import datetime, timedelta
 
 
 class Database:
-    """Класс для работы с базой данных SQLite для системы управления отелем."""
-
+    """
+    @brief Класс для работы с базой данных SQLite для системы управления отелем.
+    """
     def __init__(self, db_path='hotel.db'):
-        """Инициализация соединения с базой данных и создание таблиц."""
+        """
+        @brief Инициализация соединения с базой данных и создание таблиц.
+        @param db_path Путь к файлу базы данных (по умолчанию 'hotel.db').
+        """
         self.db_path = db_path
         self.conn = None
         self.cursor = None
@@ -26,7 +35,9 @@ class Database:
         self.create_default_admin()
 
     def ensure_connection(self):
-        """Проверка и переоткрытие соединения, если оно закрыто или отсутствует."""
+        """
+        @brief Проверка и переоткрытие соединения, если оно закрыто или отсутствует.
+        """
         try:
             if self.conn is None or self.cursor is None:
                 raise AttributeError("Соединение или курсор не инициализированы")
@@ -46,11 +57,13 @@ class Database:
             logging.info("Новое соединение с базой данных установлено")
 
     def create_tables(self):
-        """Создание всех необходимых таблиц в базе данных."""
+        """
+        @brief Создание всех необходимых таблиц в базе данных.
+        """
         self.ensure_connection()
         self.cursor.execute("PRAGMA foreign_keys = ON")
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -64,7 +77,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS rooms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 number TEXT UNIQUE NOT NULL,
@@ -73,13 +86,13 @@ class Database:
                 capacity INTEGER NOT NULL,
                 price_per_night REAL NOT NULL,
                 description TEXT,
-                status TEXT DEFAULT 'available' CHECK(status IN ('available', 'occupied', 
+                status TEXT DEFAULT 'available' CHECK(status IN ('available', 'occupied',
                                                                 'cleaning', 'maintenance')),
                 image_path TEXT
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS bookings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 room_id INTEGER NOT NULL,
@@ -90,7 +103,7 @@ class Database:
                 check_out_date TEXT NOT NULL,
                 adults INTEGER NOT NULL,
                 children INTEGER DEFAULT 0,
-                status TEXT DEFAULT 'reserved' CHECK(status IN ('reserved', 'checked_in', 
+                status TEXT DEFAULT 'reserved' CHECK(status IN ('reserved', 'checked_in',
                                                                'checked_out', 'cancelled')),
                 total_price REAL NOT NULL,
                 deposit REAL DEFAULT 0,
@@ -101,7 +114,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -111,7 +124,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS booking_services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 booking_id INTEGER NOT NULL,
@@ -122,7 +135,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS clients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 full_name TEXT NOT NULL,
@@ -133,7 +146,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 booking_id INTEGER NOT NULL,
@@ -144,7 +157,7 @@ class Database:
             )
         """)
 
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS forecasts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 forecast_date TEXT NOT NULL,
@@ -158,7 +171,9 @@ class Database:
         self.conn.commit()
 
     def check_data_integrity(self):
-        """Проверка целостности базы данных."""
+        """
+        @brief Проверка целостности базы данных.
+        """
         self.ensure_connection()
         try:
             self.cursor.execute("PRAGMA integrity_check")
@@ -171,7 +186,9 @@ class Database:
             raise
 
     def create_default_admin(self):
-        """Создание администраторов по умолчанию, если они отсутствуют."""
+        """
+        @brief Создание администраторов по умолчанию, если они отсутствуют.
+        """
         self.ensure_connection()
         admins = [
             ('admin', 'admin123', 'Главный администратор', 'admin@hotel.com'),
@@ -197,7 +214,16 @@ class Database:
         self.conn.commit()
 
     def add_user(self, username, password, role, full_name, email, phone=None):
-        """Добавление нового пользователя в базу данных."""
+        """
+        @brief Добавление нового пользователя в базу данных.
+        @param username Логин пользователя.
+        @param password Пароль пользователя.
+        @param role Роль пользователя ('admin' или 'guest').
+        @param full_name Полное имя пользователя.
+        @param email Электронная почта пользователя.
+        @param phone Телефон пользователя (опционально).
+        @return bool Успешность операции (True при успехе, False при ошибке).
+        """
         self.ensure_connection()
         try:
             self.cursor.execute(
@@ -213,7 +239,12 @@ class Database:
             return False
 
     def get_user(self, username, password):
-        """Получение данных пользователя из базы данных."""
+        """
+        @brief Получение данных пользователя из базы данных.
+        @param username Логин пользователя.
+        @param password Пароль пользователя.
+        @return tuple Кортеж с данными пользователя или None, если пользователь не найден.
+        """
         self.ensure_connection()
         try:
             self.cursor.execute(
@@ -230,7 +261,14 @@ class Database:
             return None
 
     def get_available_rooms(self, check_in, check_out, room_type=None, capacity=None):
-        """Получение списка доступных номеров на указанные даты."""
+        """
+        @brief Получение списка доступных номеров на указанные даты.
+        @param check_in Дата заезда (строка в формате 'yyyy-MM-dd').
+        @param check_out Дата выезда (строка в формате 'yyyy-MM-dd').
+        @param room_type Тип номера (опционально).
+        @param capacity Вместимость номера (опционально).
+        @return list Список кортежей с данными доступных номеров.
+        """
         self.ensure_connection()
         try:
             query = """
@@ -262,7 +300,13 @@ class Database:
             return []
 
     def get_time_series(self, data_type: str, start_date: str, end_date: str) -> list[tuple[str, float]]:
-        """Извлекает временной ряд для бронирований или дохода."""
+        """
+        @brief Извлечение временного ряда для бронирований или дохода.
+        @param data_type Тип данных ('bookings' или 'revenue').
+        @param start_date Начальная дата (строка в формате 'yyyy-MM-dd').
+        @param end_date Конечная дата (строка в формате 'yyyy-MM-dd').
+        @return list Список кортежей (месяц, значение) для временного ряда.
+        """
         self.ensure_connection()
         try:
             if data_type == "bookings":
@@ -290,7 +334,14 @@ class Database:
             return []
 
     def save_forecast(self, forecast_date: str, data_type: str, actual_value: float, forecast_value: float, error: float):
-        """Сохраняет результат прогноза."""
+        """
+        @brief Сохранение результата прогноза.
+        @param forecast_date Дата прогноза (строка в формате 'yyyy-MM').
+        @param data_type Тип данных ('bookings' или 'revenue').
+        @param actual_value Фактическое значение (опционально).
+        @param forecast_value Прогнозируемое значение.
+        @param error Ошибка прогноза (опционально).
+        """
         self.ensure_connection()
         try:
             self.cursor.execute(
@@ -305,7 +356,11 @@ class Database:
             logging.error(f"Ошибка сохранения прогноза: {e}")
 
     def get_services_cost(self, booking_id: int) -> float:
-        """Получение суммарной стоимости услуг для бронирования."""
+        """
+        @brief Получение суммарной стоимости услуг для бронирования.
+        @param booking_id Идентификатор бронирования.
+        @return float Суммарная стоимость услуг.
+        """
         self.ensure_connection()
         try:
             self.cursor.execute("""
@@ -321,7 +376,15 @@ class Database:
             return 0.0
 
     def calculate_total_price(self, room_id: int, check_in_date: str, check_out_date: str, guest_email: str, service_ids: list[tuple[int, int]]) -> float:
-        """Расчет общей стоимости бронирования с учетом номера, скидки и услуг."""
+        """
+        @brief Расчет общей стоимости бронирования с учетом номера, скидки и услуг.
+        @param room_id Идентификатор номера.
+        @param check_in_date Дата заезда (строка в формате 'yyyy-MM-dd').
+        @param check_out_date Дата выезда (строка в формате 'yyyy-MM-dd').
+        @param guest_email Email гостя для проверки скидки.
+        @param service_ids Список кортежей (ID услуги, количество).
+        @return float Общая стоимость бронирования.
+        """
         self.ensure_connection()
         try:
             # Получение цены номера
@@ -355,7 +418,9 @@ class Database:
             raise
 
     def close(self):
-        """Закрытие соединения с базой данных."""
+        """
+        @brief Закрытие соединения с базой данных.
+        """
         logging.info("Закрытие соединения с базой данных")
         if self.conn:
             try:

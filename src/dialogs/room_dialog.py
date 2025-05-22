@@ -1,13 +1,23 @@
+"""
+@file room_dialog.py
+@brief Модуль, реализующий диалог для добавления нового номера в систему.
+"""
+
 from PyQt5.QtWidgets import QDialog, QLineEdit, QComboBox, QSpinBox, QPushButton
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QFormLayout, QMessageBox
 
 import sqlite3
 
-class RoomDialog(QDialog):
-    """Диалог для добавления нового номера."""
 
+class RoomDialog(QDialog):
+    """
+    @brief Диалог для добавления нового номера.
+    """
     def __init__(self, db):
-        """Инициализация диалога добавления номера."""
+        """
+        @brief Инициализация диалога добавления номера.
+        @param db Экземпляр класса Database для работы с базой данных.
+        """
         super().__init__()
         self.db = db  # Сохранение объекта базы данных
         self.setWindowTitle('Добавить новый номер')
@@ -66,7 +76,9 @@ class RoomDialog(QDialog):
         layout.addLayout(buttons)
 
     def save_room(self):
-        """Сохранение данных о новом номере."""
+        """
+        @brief Сохранение данных о новом номере в базу данных.
+        """
         number = self.room_number.text().strip()
         room_type = self.room_type.currentText()
         floor = self.floor.value()

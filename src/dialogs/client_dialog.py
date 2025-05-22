@@ -1,12 +1,22 @@
+"""
+@file client_dialog.py
+@brief Модуль, реализующий диалог для добавления нового клиента в систему.
+"""
+
 from PyQt5.QtWidgets import QDialog, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout
 from PyQt5.QtWidgets import QFormLayout, QMessageBox
 import sqlite3
 
-class ClientDialog(QDialog):
-    """Диалог для добавления нового клиента."""
 
+class ClientDialog(QDialog):
+    """
+    @brief Диалог для добавления нового клиента.
+    """
     def __init__(self, db):
-        """Инициализация диалога добавления клиента."""
+        """
+        @brief Инициализация диалога добавления клиента.
+        @param db Экземпляр класса Database для работы с базой данных.
+        """
         super().__init__()
         self.db = db  # Сохранение объекта базы данных
         self.setWindowTitle('Добавить клиента')
@@ -55,7 +65,9 @@ class ClientDialog(QDialog):
         layout.addLayout(buttons)
 
     def save_client(self):
-        """Сохранение данных о новом клиенте."""
+        """
+        @brief Сохранение данных о новом клиенте в базу данных.
+        """
         full_name = self.full_name.text().strip()
         email = self.email.text().strip()
         phone = self.phone.text().strip()

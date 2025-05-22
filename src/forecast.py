@@ -1,12 +1,24 @@
+"""
+@file forecast.py
+@brief Модуль, реализующий класс для расчета прогнозных данных и оценки точности.
+"""
+
 from typing import List, Tuple
 import math
 
-class Forecast:
-    """Класс для расчета прогнозных данных и оценки точности."""
 
+class Forecast:
+    """
+    @brief Класс для расчета прогнозных данных и оценки точности.
+    """
     @staticmethod
     def moving_average(data: List[float], n: int) -> List[float]:
-        """Рассчитывает скользящую среднюю для временного ряда."""
+        """
+        @brief Рассчитывает скользящую среднюю для временного ряда.
+        @param data Список значений временного ряда.
+        @param n Размер окна скользящей средней.
+        @return List[float] Список значений скользящей средней.
+        """
         if len(data) < n:
             return []
         moving_averages = []
@@ -17,7 +29,13 @@ class Forecast:
 
     @staticmethod
     def forecast_values(data: List[float], n: int, periods: int) -> List[float]:
-        """Рассчитывает прогнозные значения на заданное число периодов."""
+        """
+        @brief Рассчитывает прогнозные значения на заданное число периодов.
+        @param data Список исторических данных.
+        @param n Размер окна скользящей средней.
+        @param periods Количество периодов для прогноза.
+        @return List[float] Список прогнозных значений.
+        """
         if len(data) < n:
             return []
         forecasts = []
@@ -37,7 +55,12 @@ class Forecast:
 
     @staticmethod
     def calculate_errors(actual: List[float], predicted: List[float]) -> Tuple[float, float, float]:
-        """Рассчитывает ошибки прогноза."""
+        """
+        @brief Рассчитывает ошибки прогноза.
+        @param actual Список фактических значений.
+        @param predicted Список предсказанных значений.
+        @return Tuple[float, float, float] Кортеж (средняя абсолютная ошибка, среднеквадратичная ошибка, средняя относительная ошибка).
+        """
         if len(actual) != len(predicted) or len(actual) == 0:
             return 0.0, 0.0, 0.0
         k = len(actual)
@@ -56,7 +79,11 @@ class Forecast:
 
     @staticmethod
     def interpret_accuracy(mean_relative_error: float) -> str:
-        """Интерпретирует точность прогноза."""
+        """
+        @brief Интерпретирует точность прогноза.
+        @param mean_relative_error Средняя относительная ошибка.
+        @return str Текстовая интерпретация точности ('Высокая', 'Хорошая', 'Удовлетворительная', 'Неудовлетворительная').
+        """
         if mean_relative_error < 10:
             return "Высокая"
         elif mean_relative_error <= 20:

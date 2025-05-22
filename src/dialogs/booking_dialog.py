@@ -1,3 +1,8 @@
+"""
+@file booking_dialog.py
+@brief Модуль, реализующий диалог для создания или редактирования бронирования.
+"""
+
 import sqlite3
 import re
 import logging
@@ -7,10 +12,16 @@ from src.database import Database
 
 
 class BookingDialog(QDialog):
-    """Диалог для создания или редактирования бронирования."""
-
+    """
+    @brief Диалог для создания или редактирования бронирования.
+    """
     def __init__(self, db, booking=None, user_id=None):
-        """Инициализация диалога бронирования."""
+        """
+        @brief Инициализация диалога бронирования.
+        @param db Экземпляр класса Database для работы с базой данных.
+        @param booking Кортеж с данными существующего бронирования (опционально).
+        @param user_id Идентификатор пользователя, создающего бронирование (опционально).
+        """
         super().__init__()
         self.db = db
         self.booking = booking
@@ -95,7 +106,9 @@ class BookingDialog(QDialog):
             self.load_booking_data()
 
     def load_services(self):
-        """Загрузка доступных услуг."""
+        """
+        @brief Загрузка списка доступных услуг из базы данных.
+        """
         try:
             self.db.ensure_connection()
             self.db.cursor.execute("SELECT id, name, price FROM services WHERE is_active = 1")
@@ -119,7 +132,9 @@ class BookingDialog(QDialog):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить услуги')
 
     def load_booking_data(self):
-        """Загрузка данных существующего бронирования."""
+        """
+        @brief Загрузка данных существующего бронирования для редактирования.
+        """
         self.guest_name.setText(self.booking[2])
         self.guest_phone.setText(self.booking[3])
         self.guest_email.setText(self.booking[4] or '')
@@ -146,7 +161,9 @@ class BookingDialog(QDialog):
             logging.error(f"Ошибка загрузки услуг бронирования: {e}")
 
     def load_available_rooms(self):
-        """Загрузка доступных номеров для выбранного типа и дат."""
+        """
+        @brief Загрузка списка доступных номеров для выбранного типа и дат.
+        """
         room_type = self.room_type.currentText()
         check_in = self.check_in.date().toString('yyyy-MM-dd')
         check_out = self.check_out.date().toString('yyyy-MM-dd')
@@ -166,7 +183,9 @@ class BookingDialog(QDialog):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить номера: {str(e)}')
 
     def calculate_price(self):
-        """Расчет стоимости бронирования."""
+        """
+        @brief Расчет стоимости бронирования с учетом номера, дат и выбранных услуг.
+        """
         room_id = self.room_number.currentData()
         check_in = self.check_in.date().toString('yyyy-MM-dd')
         check_out = self.check_out.date().toString('yyyy-MM-dd')
@@ -193,7 +212,9 @@ class BookingDialog(QDialog):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось рассчитать стоимость: {str(e)}')
 
     def save_booking(self):
-        """Сохранение бронирования."""
+        """
+        @brief Сохранение бронирования в базу данных.
+        """
         guest_name = self.guest_name.text().strip()
         guest_phone = self.guest_phone.text().strip()
         guest_email = self.guest_email.text().strip()

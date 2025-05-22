@@ -1,3 +1,8 @@
+"""
+@file forecast_widget.py
+@brief Модуль, реализующий виджет для отображения прогнозов в интерфейсе.
+"""
+
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,8 +11,17 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from src.forecast import Forecast
 import logging
 
+
 class ForecastWidget(QWidget):
+    """
+    @brief Виджет для отображения прогнозов доходов и бронирований.
+    """
     def __init__(self, db, parent=None):
+        """
+        @brief Инициализация виджета прогноза.
+        @param db Экземпляр класса Database для работы с базой данных.
+        @param parent Родительский виджет (опционально).
+        """
         super().__init__(parent)
         self.db = db
         self.forecast = Forecast()
@@ -15,6 +29,9 @@ class ForecastWidget(QWidget):
         self.load_data()
 
     def init_ui(self):
+        """
+        @brief Инициализация пользовательского интерфейса виджета.
+        """
         self.layout = QVBoxLayout()
 
         # График
@@ -31,6 +48,9 @@ class ForecastWidget(QWidget):
         self.setLayout(self.layout)
 
     def load_data(self):
+        """
+        @brief Загрузка данных для построения прогноза.
+        """
         try:
             self.db.ensure_connection()
             query = """
