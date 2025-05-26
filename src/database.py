@@ -12,7 +12,7 @@ class Database:
     """
     @brief Класс для управления базой данных отеля.
     """
-    def __init__(self, db_path):
+    def __init__(self, db_path: str = "hotel.db"):
         """
         @brief Инициализация соединения с базой данных.
         @param db_path Путь к файлу базы данных SQLite.

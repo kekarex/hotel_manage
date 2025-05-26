@@ -1,71 +1,67 @@
-"""
-@file forecast.py
-@brief Модуль для выполнения прогнозов с использованием скользящей средней.
-"""
-
-from math import sqrt
-
+from typing import List, Tuple
+import math
 
 class Forecast:
-    """
-    @brief Класс для выполнения прогнозов временных рядов.
-    """
+    """Класс для расчета прогнозных данных и оценки точности."""
+
     @staticmethod
-    def forecast_values(data, window_size, periods):
-        """
-        @brief Вычисление прогнозных значений с использованием скользящей средней.
-        @param data Список фактических значений.
-        @param window_size Размер окна скользящей средней.
-        @param periods Количество периодов для прогноза.
-        @return Список прогнозных значений.
-        """
-        if not data or len(data) < window_size:
+    def moving_average(data: List[float], n: int) -> List[float]:
+        """Рассчитывает скользящую среднюю для временного ряда."""
+        if len(data) < n:
             return []
-
-        forecast = []
-        for i in range(len(data) - window_size + 1, len(data) + periods):
-            if i < len(data):
-                window = data[max(0, i - window_size):i]
-                avg = sum(window) / len(window)
-                forecast.append(avg)
-            else:
-                window = data[-window_size:]
-                avg = sum(window) / len(window)
-                forecast.append(avg)
-
-        return forecast
+        moving_averages = []
+        for i in range(len(data) - n + 1):
+            window = data[i:i + n]
+            moving_averages.append(sum(window) / n)
+        return moving_averages
 
     @staticmethod
-    def calculate_errors(actual, predicted):
-        """
-        @brief Вычисление ошибок прогноза.
-        @param actual Список фактических значений.
-        @param predicted Список прогнозных значений.
-        @return Кортеж (средняя абсолютная ошибка, среднеквадратичная ошибка,
-                средняя относительная ошибка в процентах).
-        """
-        if len(actual) != len(predicted) or not actual:
-            return (0.0, 0.0, 0.0)
-
-        n = len(actual)
-        abs_error = sum(abs(a - p) for a, p in zip(actual, predicted)) / n
-        sq_error = sqrt(sum((a - p) ** 2 for a, p in zip(actual, predicted)) / n)
-        rel_error = (
-            sum(abs((a - p) / a) * 100 for a, p in zip(actual, predicted) if a != 0) / n
-        )
-
-        return (abs_error, sq_error, rel_error)
+    def forecast_values(data: List[float], n: int, periods: int) -> List[float]:
+        """Рассчитывает прогнозные значения на заданное число периодов."""
+        if len(data) < n:
+            return []
+        forecasts = []
+        current_data = data[:]
+        for _ in range(periods):
+            ma = Forecast.moving_average(current_data, n)
+            if len(ma) < 2:
+                break
+            # y_{t+1} = m_{t-1} + (1/n) * (y_t - y_{t-1})
+            y_t = current_data[-1]
+            y_t_minus_1 = current_data[-2]
+            m_t_minus_1 = ma[-2]
+            forecast = m_t_minus_1 + (1 / n) * (y_t - y_t_minus_1)
+            forecasts.append(round(forecast, 2))
+            current_data.append(forecast)
+        return forecasts
 
     @staticmethod
-    def interpret_accuracy(mean_rel_error):
-        """
-        @brief Интерпретация точности прогноза по средней относительной ошибке.
-        @param mean_rel_error Средняя относительная ошибка в процентах.
-        @return Текстовая интерпретация точности.
-        """
-        if mean_rel_error < 10:
-            return "Высокая точность"
-        elif mean_rel_error < 20:
-            return "Средняя точность"
+    def calculate_errors(actual: List[float], predicted: List[float]) -> Tuple[float, float, float]:
+        """Рассчитывает ошибки прогноза."""
+        if len(actual) != len(predicted) or len(actual) == 0:
+            return 0.0, 0.0, 0.0
+        k = len(actual)
+        absolute_errors = [abs(actual[i] - predicted[i]) for i in range(k)]
+        squared_errors = [(actual[i] - predicted[i]) ** 2 for i in range(k)]
+        relative_errors = [(absolute_errors[i] / actual[i]) * 100 if actual[i] != 0 else 0 for i in range(k)]
+
+        # Средняя абсолютная ошибка
+        mean_absolute_error = sum(absolute_errors) / k
+        # Средняя квадратическая ошибка
+        mean_squared_error = math.sqrt(sum(squared_errors) / k)
+        # Средняя относительная ошибка
+        mean_relative_error = sum(relative_errors) / k
+
+        return mean_absolute_error, mean_squared_error, mean_relative_error
+
+    @staticmethod
+    def interpret_accuracy(mean_relative_error: float) -> str:
+        """Интерпретирует точность прогноза."""
+        if mean_relative_error < 10:
+            return "Высокая"
+        elif mean_relative_error <= 20:
+            return "Хорошая"
+        elif mean_relative_error <= 50:
+            return "Удовлетворительная"
         else:
-            return "Низкая точность"
+            return "Неудовлетворительная"
