@@ -1,4 +1,4 @@
-"""
+"""!
 @file guest_dashboard.py
 @brief Модуль, реализующий панель гостя для управления бронированиями и отзывами.
 """
@@ -14,12 +14,12 @@ from PyQt5.QtGui import QFont, QPixmap, QColor
 
 
 class GuestDashboard(QMainWindow):
-    """
+    """!
     @brief Класс панели гостя для управления бронированиями и отзывами.
     """
 
     def __init__(self, user, db):
-        """
+        """!
         @brief Инициализация панели гостя.
         @param user Кортеж с данными пользователя.
         @param db Экземпляр класса Database для работы с базой данных.
@@ -35,7 +35,7 @@ class GuestDashboard(QMainWindow):
         self.load_data()  # Загрузка данных
 
     def init_ui(self):
-        """
+        """!
         @brief Инициализация пользовательского интерфейса.
         """
         central_widget = QWidget()
@@ -53,7 +53,7 @@ class GuestDashboard(QMainWindow):
         self.init_offers_tab()  # Инициализация вкладки предложений
 
     def init_booking_tab(self):
-        """
+        """!
         @brief Инициализация вкладки бронирования номера.
         """
         tab = QWidget()
@@ -150,13 +150,13 @@ class GuestDashboard(QMainWindow):
         self.tabs.addTab(tab, 'Бронирование')
 
     def load_data(self):
-        """
+        """!
         @brief Загрузка данных о доступных номерах и обновление интерфейса.
         """
         self.load_available_rooms()
 
     def load_available_rooms(self):
-        """
+        """!
         @brief Загрузка списка доступных номеров в таблицу.
         """
         check_in_date = self.check_in.date().toString('yyyy-MM-dd')
@@ -178,7 +178,7 @@ class GuestDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить данные номеров')
 
     def book_room(self):
-        """
+        """!
         @brief Обработка бронирования номера.
         """
         selected_row = self.available_rooms_table.currentRow()
@@ -234,7 +234,7 @@ class GuestDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось забронировать номер: {str(e)}')
 
     def init_my_bookings_tab(self):
-        """
+        """!
         @brief Инициализация вкладки моих бронирований.
         """
         tab = QWidget()
@@ -261,7 +261,7 @@ class GuestDashboard(QMainWindow):
         self.tabs.addTab(tab, 'Мои бронирования')
 
     def load_my_bookings(self):
-        """
+        """!
         @brief Загрузка данных о бронированиях текущего гостя.
         """
         try:
@@ -304,7 +304,7 @@ class GuestDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить бронирования')
 
     def cancel_booking(self, booking_id):
-        """
+        """!
         @brief Отмена бронирования гостем.
         @param booking_id Идентификатор бронирования.
         """
@@ -328,7 +328,7 @@ class GuestDashboard(QMainWindow):
                 QMessageBox.warning(self, 'Ошибка', f'Не удалось отменить бронирование: {str(e)}')
 
     def init_review_tab(self):
-        """
+        """!
         @brief Инициализация вкладки для оставления отзывов.
         """
         tab = QWidget()
@@ -362,7 +362,7 @@ class GuestDashboard(QMainWindow):
         self.tabs.addTab(tab, 'Отзывы')
 
     def load_reviews_data(self):
-        """
+        """!
         @brief Загрузка списка бронирований для отзывов.
         """
         try:
@@ -385,7 +385,7 @@ class GuestDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить данные бронирований')
 
     def submit_review(self):
-        """
+        """!
         @brief Отправка отзыва для выбранного бронирования.
         """
         if not self.review_bookings.currentText():
@@ -412,7 +412,7 @@ class GuestDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось отправить отзыв: {str(e)}')
 
     def init_offers_tab(self):
-        """
+        """!
         @brief Инициализация вкладки предложений.
         """
         tab = QWidget()
@@ -436,7 +436,7 @@ class GuestDashboard(QMainWindow):
         self.tabs.addTab(tab, 'Предложения')
 
     def closeEvent(self, event):
-        """
+        """!
         @brief Обработка события закрытия окна.
         @param event Событие закрытия окна.
         """

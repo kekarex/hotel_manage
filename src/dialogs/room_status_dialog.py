@@ -1,4 +1,4 @@
-"""
+"""!
 @file room_status_dialog.py
 @brief Модуль, реализующий диалог для изменения статуса номера.
 """
@@ -12,11 +12,11 @@ from PyQt5.QtWidgets import QMessageBox
 
 
 class RoomStatusDialog(QDialog):
-    """
+    """!
     @brief Диалог для изменения статуса номера.
     """
     def __init__(self, current_status):
-        """
+        """!
         @brief Инициализация диалога изменения статуса номера.
         @param current_status Текущий статус номера (например, 'available',
                               'occupied').
@@ -50,7 +50,7 @@ class RoomStatusDialog(QDialog):
         layout.addLayout(buttons)
 
     def get_selected_status(self):
-        """
+        """!
         @brief Получение выбранного статуса номера.
         @return str Новый статус номера.
         """

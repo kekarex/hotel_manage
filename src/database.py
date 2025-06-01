@@ -1,4 +1,4 @@
-"""
+"""!
 @file database.py
 @brief Модуль для работы с базой данных системы управления отелем.
 """
@@ -9,11 +9,11 @@ from datetime import datetime
 
 
 class Database:
-    """
+    """!
     @brief Класс для управления базой данных отеля.
     """
     def __init__(self, db_path: str = "hotel.db"):
-        """
+        """!
         @brief Инициализация соединения с базой данных.
         @param db_path Путь к файлу базы данных SQLite.
         """
@@ -24,7 +24,7 @@ class Database:
         self.init_tables()
 
     def connect(self):
-        """
+        """!
         @brief Установка соединения с базой данных.
         """
         try:
@@ -36,14 +36,14 @@ class Database:
             raise
 
     def ensure_connection(self):
-        """
+        """!
         @brief Проверка и восстановление соединения с базой данных.
         """
         if self.conn is None or self.cursor is None:
             self.connect()
 
     def init_tables(self):
-        """
+        """!
         @brief Инициализация таблиц базы данных.
         """
         try:
@@ -158,7 +158,7 @@ class Database:
             raise
 
     def insert_default_data(self):
-        """
+        """!
         @brief Вставка тестовых данных в базу данных.
         """
         try:
@@ -217,7 +217,7 @@ class Database:
             logging.error(f"Ошибка добавления тестовых данных: {e}")
 
     def add_user(self, username, password, role, full_name=None, email=None, phone=None):
-        """
+        """!
         @brief Добавление нового пользователя в базу данных.
         @param username Логин пользователя.
         @param password Пароль пользователя.
@@ -254,7 +254,7 @@ class Database:
             return False
 
     def get_user(self, username, password):
-        """
+        """!
         @brief Получение данных пользователя по логину и паролю.
         @param username Логин пользователя.
         @param password Пароль пользователя.
@@ -274,7 +274,7 @@ class Database:
             return None
 
     def get_time_series(self, data_type, start_date, end_date):
-        """
+        """!
         @brief Получение временного ряда для аналитики.
         @param data_type Тип данных ('bookings' или 'revenue').
         @param start_date Начальная дата.
@@ -313,7 +313,7 @@ class Database:
             return []
 
     def save_forecast(self, month, data_type, actual_value, predicted_value, error):
-        """
+        """!
         @brief Сохранение прогноза в базу данных.
         @param month Месяц прогноза (формат 'YYYY-MM').
         @param data_type Тип данных ('bookings' или 'revenue').
@@ -337,7 +337,7 @@ class Database:
             logging.error(f"Ошибка сохранения прогноза: {e}")
 
     def get_bookings_by_user(self, user_id):
-        """
+        """!
         @brief Получение бронирований пользователя.
         @param user_id ID пользователя.
         @return Список бронирований.
@@ -360,7 +360,7 @@ class Database:
             return []
 
     def get_available_rooms(self, check_in_date, check_out_date, room_type=None):
-        """
+        """!
         @brief Получение списка доступных номеров на указанные даты.
         @param check_in_date Дата заезда.
         @param check_out_date Дата выезда.
@@ -402,7 +402,7 @@ class Database:
             return []
 
     def get_room_by_id(self, room_id):
-        """
+        """!
         @brief Получение информации о номере по ID.
         @param room_id ID номера.
         @return Кортеж с данными номера.
@@ -416,7 +416,7 @@ class Database:
             return None
 
     def get_services(self):
-        """
+        """!
         @brief Получение списка всех услуг.
         @return Список услуг.
         """
@@ -429,7 +429,7 @@ class Database:
             return []
 
     def add_booking(self, booking_data, services):
-        """
+        """!
         @brief Добавление нового бронирования.
         @param booking_data Данные бронирования.
         @param services Список услуг для бронирования.
@@ -473,7 +473,7 @@ class Database:
             return None
 
     def update_booking(self, booking_id, booking_data, services):
-        """
+        """!
         @brief Обновление существующего бронирования.
         @param booking_id ID бронирования.
         @param booking_data Обновленные данные бронирования.
@@ -514,7 +514,7 @@ class Database:
             self.conn.rollback()
 
     def get_booking_services(self, booking_id):
-        """
+        """!
         @brief Получение услуг, связанных с бронированием.
         @param booking_id ID бронирования.
         @return Список услуг.
@@ -535,7 +535,7 @@ class Database:
             return []
 
     def close(self):
-        """
+        """!
         @brief Закрытие соединения с базой данных.
         """
         if self.conn:

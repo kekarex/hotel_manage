@@ -1,3 +1,8 @@
+"""!
+@file main.py
+@brief Модуль, реализующий запуск приложения.
+"""
+
 import sys
 import logging
 from PyQt5.QtWidgets import QApplication
@@ -7,7 +12,7 @@ from src.auth_window import AuthWindow
 
 
 def main():
-    """
+    """!
     @brief Инициализация и запуск приложения.
     """
     logging.basicConfig(

@@ -1,4 +1,4 @@
-"""
+"""!
 @file discount_dialog.py
 @brief Модуль, реализующий диалог для редактирования скидки клиента.
 """
@@ -12,11 +12,11 @@ from PyQt5.QtWidgets import QMessageBox
 
 
 class DiscountDialog(QDialog):
-    """
+    """!
     @brief Диалог для редактирования скидки клиента.
     """
     def __init__(self, current_discount):
-        """
+        """!
         @brief Инициализация диалога редактирования скидки.
         @param current_discount Текущее значение скидки клиента (в процентах).
         """
@@ -50,7 +50,7 @@ class DiscountDialog(QDialog):
         layout.addLayout(buttons)
 
     def get_discount(self):
-        """
+        """!
         @brief Получение значения скидки, введенного пользователем.
         @return int Значение скидки в процентах.
         """

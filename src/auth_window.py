@@ -1,4 +1,4 @@
-"""
+"""!
 @file auth_window.py
 @brief Модуль, реализующий окно авторизации для системы управления отелем.
 """
@@ -28,11 +28,11 @@ from src.guest_dashboard import GuestDashboard
 
 
 class AuthWindow(QMainWindow):
-    """
+    """!
     @brief Класс окна авторизации с выбором роли и функционалом входа/регистрации.
     """
     def __init__(self, db):
-        """
+        """!
         @brief Инициализация окна авторизации.
         @param db Экземпляр класса Database для работы с базой данных.
         """
@@ -55,7 +55,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
 
     def init_role_selection(self):
-        """
+        """!
         @brief Инициализация экрана выбора роли пользователя.
         """
         widget = QWidget()
@@ -104,7 +104,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def init_admin_login(self):
-        """
+        """!
         @brief Инициализация формы входа для администратора.
         """
         widget = QWidget()
@@ -149,7 +149,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def init_guest_login(self):
-        """
+        """!
         @brief Инициализация формы входа для гостя.
         """
         widget = QWidget()
@@ -198,7 +198,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def init_guest_register(self):
-        """
+        """!
         @brief Инициализация формы регистрации гостя.
         """
         widget = QWidget()
@@ -251,7 +251,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def clear_fields(self):
-        """
+        """!
         @brief Очистка всех полей ввода.
         """
         self.admin_username.clear()
@@ -265,7 +265,7 @@ class AuthWindow(QMainWindow):
         self.guest_register_password.clear()
 
     def admin_login(self):
-        """
+        """!
         @brief Обработка входа администратора.
         """
         username = self.admin_username.text().strip()
@@ -301,7 +301,7 @@ class AuthWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {str(e)}")
 
     def guest_login(self):
-        """
+        """!
         @brief Обработка входа гостя.
         """
         username = self.guest_username.text().strip()
@@ -341,7 +341,7 @@ class AuthWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {str(e)}")
 
     def register_guest(self):
-        """
+        """!
         @brief Обработка регистрации нового гостя.
         """
         fullname = self.guest_register_fullname.text().strip()
@@ -389,7 +389,7 @@ class AuthWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", f"Ошибка при регистрации: {str(e)}")
 
     def logout(self):
-        """
+        """!
         @brief Выход из системы и очистка полей.
         """
         logging.info("Выход из системы")
@@ -397,7 +397,7 @@ class AuthWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
 
     def open_admin_dashboard(self, user):
-        """
+        """!
         @brief Открытие панели администратора.
         @param user Кортеж с данными пользователя.
         """
@@ -407,7 +407,7 @@ class AuthWindow(QMainWindow):
         self.close()
 
     def open_guest_dashboard(self, user):
-        """
+        """!
         @brief Открытие панели гостя.
         @param user Кортеж с данными пользователя.
         """
@@ -417,7 +417,7 @@ class AuthWindow(QMainWindow):
         self.close()
 
     def closeEvent(self, event):
-        """
+        """!
         @brief Обработка события закрытия окна.
         @param event Событие закрытия окна.
         """

@@ -1,4 +1,4 @@
-"""
+"""!
 @file room_dialog.py
 @brief Модуль, реализующий диалог для добавления нового номера в систему.
 """
@@ -17,11 +17,11 @@ from PyQt5.QtWidgets import QMessageBox
 
 
 class RoomDialog(QDialog):
-    """
+    """!
     @brief Диалог для добавления нового номера.
     """
     def __init__(self, db):
-        """
+        """!
         @brief Инициализация диалога добавления номера.
         @param db Экземпляр класса Database для работы с базой данных.
         """
@@ -83,7 +83,7 @@ class RoomDialog(QDialog):
         layout.addLayout(buttons)
 
     def save_room(self):
-        """
+        """!
         @brief Сохранение данных о новом номере в базу данных.
         """
         number = self.room_number.text().strip()

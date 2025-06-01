@@ -1,3 +1,8 @@
+"""!
+@file admin_dashboard.py
+@brief Модуль, реализующий панель администратора.
+"""
+
 import logging
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout,
                              QHBoxLayout, QTableWidget, QTableWidgetItem, QComboBox,
@@ -17,10 +22,20 @@ from datetime import datetime
 
 
 class AdminDashboard(QMainWindow):
-    """Панель администратора для управления операциями отеля."""
+    """!
+    @brief Панель администратора для управления операциями отеля.
+
+    Этот класс реализует основной интерфейс администратора для управления бронированиями,
+    номерами, клиентами, финансовыми отчётами и аналитикой.
+    """
 
     def __init__(self, user, db):
-        """Инициализация панели администратора."""
+        """!
+        @brief Инициализация панели администратора.
+
+        @param user Кортеж с данными пользователя (например, ID, роль).
+        @param db Объект базы данных SQLite для взаимодействия с данными.
+        """
         super().__init__()
         self.user = user
         self.db = db
@@ -36,11 +51,19 @@ class AdminDashboard(QMainWindow):
         self.timer.start(300000)
 
     def load_data(self):
-        """Обновление данных бронирований."""
+        """!
+        @brief Обновление данных бронирований.
+
+        Вызывает метод загрузки данных бронирований в таблицу.
+        """
         self.load_bookings_data()
 
     def init_ui(self):
-        """Инициализация пользовательского интерфейса."""
+        """!
+        @brief Инициализация пользовательского интерфейса.
+
+        Создаёт боковую панель с кнопками навигации и основной контейнер для разделов.
+        """
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -87,7 +110,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
 
     def init_bookings(self):
-        """Инициализация раздела управления бронированиями."""
+        """!
+        @brief Инициализация раздела управления бронированиями.
+
+        Создаёт интерфейс для управления бронированиями, включая таблицу и кнопки действий.
+        """
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -125,7 +152,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def load_bookings_data(self):
-        """Загрузка данных бронирований в таблицу."""
+        """!
+        @brief Загрузка данных бронирований в таблицу.
+
+        Извлекает данные бронирований из базы данных и заполняет ими таблицу.
+        """
         try:
             self.db.ensure_connection()
             self.db.cursor.execute("""
@@ -166,13 +197,21 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить данные бронирований')
 
     def create_booking(self):
-        """Создание нового бронирования."""
+        """!
+        @brief Создание нового бронирования.
+
+        Открывает диалог для создания нового бронирования и обновляет таблицу при успехе.
+        """
         dialog = BookingDialog(self.db, user_id=self.user[0])
         if dialog.exec_() == dialog.Accepted:
             self.load_bookings_data()
 
     def edit_booking(self):
-        """Редактирование существующего бронирования."""
+        """!
+        @brief Редактирование существующего бронирования.
+
+        Открывает диалог для редактирования выбранного бронирования.
+        """
         selected_row = self.bookings_table.currentRow()
         if selected_row == -1:
             QMessageBox.warning(self, 'Ошибка', 'Выберите бронирование для редактирования')
@@ -197,7 +236,11 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить данные бронирования: {str(e)}')
 
     def cancel_booking(self):
-        """Отмена бронирования."""
+        """!
+        @brief Отмена бронирования.
+
+        Отменяет выбранное бронирование после подтверждения пользователем.
+        """
         selected_row = self.bookings_table.currentRow()
         if selected_row == -1:
             QMessageBox.warning(self, 'Ошибка', 'Выберите бронирование для отмены')
@@ -228,14 +271,22 @@ class AdminDashboard(QMainWindow):
                 QMessageBox.warning(self, 'Ошибка', f'Не удалось отменить бронирование: {str(e)}')
 
     def assign_rooms(self):
-        """Распределение номеров (заглушка)."""
+        """!
+        @brief Распределение номеров (заглушка).
+
+        Показывает сообщение о том, что функция будет реализована в будущем.
+        """
         QMessageBox.information(
             self, 'Информация',
             'Функция распределения по номерам будет реализована в будущих версиях'
         )
 
     def init_rooms(self):
-        """Инициализация раздела управления номерами."""
+        """!
+        @brief Инициализация раздела управления номерами.
+
+        Создаёт интерфейс для управления номерами, включая таблицу и кнопки действий.
+        """
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -267,7 +318,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def load_rooms_data(self):
-        """Загрузка данных номеров в таблицу."""
+        """!
+        @brief Загрузка данных номеров в таблицу.
+
+        Извлекает данные о номерах из базы данных и заполняет ими таблицу.
+        """
         try:
             self.db.ensure_connection()
             self.db.cursor.execute("""
@@ -299,13 +354,21 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить данные номеров')
 
     def add_room(self):
-        """Добавление нового номера."""
+        """!
+        @brief Добавление нового номера.
+
+        Открывает диалог для добавления нового номера и обновляет таблицу при успехе.
+        """
         dialog = RoomDialog(self.db)
         if dialog.exec_() == dialog.Accepted:
             self.load_rooms_data()
 
     def edit_room_status(self):
-        """Редактирование статуса номера."""
+        """!
+        @brief Редактирование статуса номера.
+
+        Открывает диалог для изменения статуса выбранного номера.
+        """
         selected_row = self.rooms_table.currentRow()
         if selected_row == -1:
             QMessageBox.warning(self, 'Ошибка', 'Выберите номер для изменения статуса')
@@ -328,7 +391,11 @@ class AdminDashboard(QMainWindow):
                 QMessageBox.warning(self, 'Ошибка', f'Не удалось обновить статус номера: {str(e)}')
 
     def init_clients(self):
-        """Инициализация раздела клиентов и скидок."""
+        """!
+        @brief Инициализация раздела клиентов и скидок.
+
+        Создаёт интерфейс для управления клиентами и их скидками.
+        """
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -360,7 +427,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def load_clients_data(self):
-        """Загрузка данных клиентов в таблицу."""
+        """!
+        @brief Загрузка данных клиентов в таблицу.
+
+        Извлекает данные о клиентах из базы данных и заполняет ими таблицу.
+        """
         try:
             self.db.ensure_connection()
             self.db.cursor.execute("""
@@ -383,13 +454,21 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Не удалось загрузить данные клиентов')
 
     def add_client(self):
-        """Добавление нового клиента."""
+        """!
+        @brief Добавление нового клиента.
+
+        Открывает диалог для добавления нового клиента и обновляет таблицу при успехе.
+        """
         dialog = ClientDialog(self.db)
         if dialog.exec_() == dialog.Accepted:
             self.load_clients_data()
 
     def edit_discount(self):
-        """Редактирование скидки клиента."""
+        """!
+        @brief Редактирование скидки клиента.
+
+        Открывает диалог для изменения скидки выбранного клиента.
+        """
         selected_row = self.clients_table.currentRow()
         if selected_row == -1:
             QMessageBox.warning(self, 'Ошибка', 'Выберите клиента для изменения скидки')
@@ -412,7 +491,11 @@ class AdminDashboard(QMainWindow):
                 QMessageBox.warning(self, 'Ошибка', f'Не удалось обновить скидку: {str(e)}')
 
     def init_reports(self):
-        """Инициализация раздела финансовых отчетов."""
+        """!
+        @brief Инициализация раздела финансовых отчётов.
+
+        Создаёт интерфейс для генерации и экспорта финансовых отчётов.
+        """
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -459,7 +542,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def generate_report(self):
-        """Генерация финансового отчета."""
+        """!
+        @brief Генерация финансового отчёта.
+
+        Формирует отчёт на основе выбранного типа и периода.
+        """
         report_type = self.report_type.currentText()
         start_date = self.start_date.date().toString('yyyy-MM-dd')
         end_date = self.end_date.date().toString('yyyy-MM-dd')
@@ -522,21 +609,33 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось сформировать отчет: {str(e)}')
 
     def export_to_pdf(self):
-        """Экспорт отчета в PDF (заглушка)."""
+        """!
+        @brief Экспорт отчёта в PDF (заглушка).
+
+        Показывает сообщение о том, что функция будет реализована в будущем.
+        """
         QMessageBox.information(
             self, 'Информация',
             'Экспорт в PDF будет реализован в будущих версиях'
         )
 
     def export_to_excel(self):
-        """Экспорт отчета в Excel (заглушка)."""
+        """!
+        @brief Экспорт отчёта в Excel (заглушка).
+
+        Показывает сообщение о том, что функция будет реализована в будущем.
+        """
         QMessageBox.information(
             self, 'Информация',
             'Экспорт в Excel будет реализован в будущих версиях'
         )
 
     def init_analytics(self):
-        """Инициализация раздела аналитики и прогнозов."""
+        """!
+        @brief Инициализация раздела аналитики и прогнозов.
+
+        Создаёт интерфейс для формирования прогнозов бронирований и доходов.
+        """
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -594,7 +693,11 @@ class AdminDashboard(QMainWindow):
         self.stacked_widget.addWidget(widget)
 
     def generate_forecast(self):
-        """Генерация прогноза с использованием скользящей средней."""
+        """!
+        @brief Генерация прогноза с использованием скользящей средней.
+
+        Формирует прогноз бронирований или доходов на основе данных за выбранный период.
+        """
         data_type = 'bookings' if self.analysis_type.currentText() == 'Бронирования' else 'revenue'
         start_date = self.forecast_start_date.date().toString('yyyy-MM-dd')
         end_date = self.forecast_end_date.date().toString('yyyy-MM-dd')
@@ -676,36 +779,64 @@ class AdminDashboard(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', f'Не удалось сформировать прогноз: {str(e)}')
 
     def show_bookings(self):
-        """Отображение раздела бронирований."""
+        """!
+        @brief Отображение раздела бронирований.
+
+        Переключает интерфейс на раздел бронирований и обновляет данные.
+        """
         self.stacked_widget.setCurrentIndex(0)
         self.load_bookings_data()
 
     def show_rooms(self):
-        """Отображение раздела управления номерами."""
+        """!
+        @brief Отображение раздела управления номерами.
+
+        Переключает интерфейс на раздел управления номерами и обновляет данные.
+        """
         self.stacked_widget.setCurrentIndex(1)
         self.load_rooms_data()
 
     def show_clients(self):
-        """Отображение раздела клиентов и скидок."""
+        """!
+        @brief Отображение раздела клиентов и скидок.
+
+        Переключает интерфейс на раздел клиентов и обновляет данные.
+        """
         self.stacked_widget.setCurrentIndex(2)
         self.load_clients_data()
 
     def show_reports(self):
-        """Отображение раздела финансовых отчетов."""
+        """!
+        @brief Отображение раздела финансовых отчётов.
+
+        Переключает интерфейс на раздел финансовых отчётов.
+        """
         self.stacked_widget.setCurrentIndex(3)
 
     def show_analytics(self):
-        """Отображение раздела аналитики и прогнозов."""
+        """!
+        @brief Отображение раздела аналитики и прогнозов.
+
+        Переключает интерфейс на раздел аналитики и формирует прогноз.
+        """
         self.stacked_widget.setCurrentIndex(4)
         self.generate_forecast()
 
     def logout(self):
-        """Выход из системы и возврат к окну авторизации."""
+        """!
+        @brief Выход из системы и возврат к окну авторизации.
+
+        Закрывает текущее окно и открывает окно авторизации.
+        """
         from auth_window import AuthWindow
         self.close()
         auth_window = AuthWindow()
         auth_window.show()
 
     def closeEvent(self, event):
-        """Обработка закрытия окна."""
+        """!
+        @brief Обработка закрытия окна.
+
+        @param event Событие закрытия окна.
+        """
         event.accept()

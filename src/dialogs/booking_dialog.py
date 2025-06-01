@@ -1,4 +1,4 @@
-"""
+"""!
 @file booking_dialog.py
 @brief Модуль, реализующий диалог для создания или редактирования бронирования.
 """
@@ -25,11 +25,11 @@ from src.database import Database
 
 
 class BookingDialog(QDialog):
-    """
+    """!
     @brief Диалог для создания или редактирования бронирования.
     """
     def __init__(self, db, booking=None, user_id=None):
-        """
+        """!
         @brief Инициализация диалога бронирования.
         @param db Экземпляр класса Database для работы с базой данных.
         @param booking Кортеж с данными существующего бронирования (опционально).
@@ -122,7 +122,7 @@ class BookingDialog(QDialog):
             self.load_booking_data()
 
     def load_services(self):
-        """
+        """!
         @brief Загрузка списка доступных услуг из базы данных.
         """
         try:
@@ -153,7 +153,7 @@ class BookingDialog(QDialog):
             QMessageBox.warning(self, "Ошибка", "Не удалось загрузить услуги")
 
     def load_booking_data(self):
-        """
+        """!
         @brief Загрузка данных существующего бронирования для редактирования.
         """
         self.guest_name.setText(self.booking[2])
@@ -188,7 +188,7 @@ class BookingDialog(QDialog):
             logging.error(f"Ошибка загрузки услуг бронирования: {e}")
 
     def load_available_rooms(self):
-        """
+        """!
         @brief Загрузка списка доступных номеров для выбранного типа и дат.
         """
         room_type = self.room_type.currentText()
@@ -214,7 +214,7 @@ class BookingDialog(QDialog):
                                     f"{str(e)}")
 
     def calculate_price(self):
-        """
+        """!
         @brief Расчет стоимости бронирования с учетом номера, дат и выбранных
                услуг.
         """
@@ -250,7 +250,7 @@ class BookingDialog(QDialog):
                                f"Не удалось рассчитать стоимость: {str(e)}")
 
     def save_booking(self):
-        """
+        """!
         @brief Сохранение бронирования в базу данных.
         """
         guest_name = self.guest_name.text().strip()

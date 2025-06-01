@@ -1,3 +1,8 @@
+"""!
+@file forecast_widget.py
+@brief Модуль, реализующий показ графиков прогнозируемых данных.
+"""
+
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,8 +11,22 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from forecast import Forecast
 import logging
 
+
 class ForecastWidget(QWidget):
+    """!
+    @brief Виджет для отображения прогноза доходов по месяцам.
+
+    Этот класс создаёт виджет PyQt5, который отображает график исторических доходов
+    и их прогноз на основе данных из базы данных SQLite.
+    """
+
     def __init__(self, db, parent=None):
+        """!
+        @brief Инициализация виджета прогноза.
+
+        @param db Объект базы данных SQLite для получения данных.
+        @param parent Родительский виджет (по умолчанию None).
+        """
         super().__init__(parent)
         self.db = db
         self.forecast = Forecast()
@@ -15,6 +34,11 @@ class ForecastWidget(QWidget):
         self.load_data()
 
     def init_ui(self):
+        """!
+        @brief Инициализация пользовательского интерфейса.
+
+        Создаёт макет с графиком и метками для отображения ошибок и точности прогноза.
+        """
         self.layout = QVBoxLayout()
 
         # График
@@ -31,6 +55,12 @@ class ForecastWidget(QWidget):
         self.setLayout(self.layout)
 
     def load_data(self):
+        """!
+        @brief Загрузка данных и построение графика прогноза.
+
+        Извлекает данные о доходах из базы данных, выполняет прогноз и отображает результаты на графике.
+        Также рассчитывает и отображает метрики ошибок (MAE, RMSE, MRE) и точность прогноза.
+        """
         try:
             self.db.ensure_connection()
             query = """
@@ -58,7 +88,9 @@ class ForecastWidget(QWidget):
 
             # Прогноз
             forecast_revenues = self.forecast.forecast_values(revenues, n, periods)
-            forecast_months = [f"{int(months[-1][:4]) + (int(months[-1][5:7]) + i)//12}-{(int(months[-1][5:7]) + i)%12 or 12:02d}" for i in range(1, periods + 1)]
+            forecast_months = [
+                f"{int(months[-1][:4]) + (int(months[-1][5:7]) + i) // 12}-{(int(months[-1][5:7]) + i) % 12 or 12:02d}"
+                for i in range(1, periods + 1)]
 
             # Ошибки (для последних исторических данных)
             if len(revenues) >= n + 1:
@@ -75,14 +107,16 @@ class ForecastWidget(QWidget):
             self.ax.clear()
             # Сброс стилей Matplotlib и отключение циклической палитры
             plt.style.use('default')
-            plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['#0000FF', '#FF0000'])  # Явно задаём цвета: синий для фактических, красный для прогноза
+            plt.rcParams['axes.prop_cycle'] = plt.cycler(
+                color=['#0000FF', '#FF0000'])  # Явно задаём цвета: синий для фактических, красный для прогноза
             # Рисуем линию фактических данных (синий цвет)
             line_actual = self.ax.plot(months, revenues, marker='o', color='#0000FF', label='Исторические доходы')
             if forecast_revenues:
                 all_months = months + forecast_months
                 all_revenues = revenues + forecast_revenues
                 # Рисуем линию прогноза (красный цвет, пунктир)
-                line_forecast = self.ax.plot(all_months[-periods-1:], all_revenues[-periods-1:], marker='o', linestyle='--', color='#FF0000', label='Прогноз')
+                line_forecast = self.ax.plot(all_months[-periods - 1:], all_revenues[-periods - 1:], marker='o',
+                                             linestyle='--', color='#FF0000', label='Прогноз')
             self.ax.set_title('Доход по месяцам и прогноз')
             self.ax.set_xlabel('Месяц')
             self.ax.set_ylabel('Доход (руб.)')
